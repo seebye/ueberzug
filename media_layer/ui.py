@@ -115,20 +115,16 @@ class OverlayWindow:
             mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
 
             for placement in self._placements.values():
-                if placement.mask:
-                    mask_gc.change(foreground=COLOR_INVISIBLE)
-                    put_pil_image(mask, mask_gc, placement.x, placement.y, placement.mask)
-                else:
-                    mask_gc.change(foreground=COLOR_VISIBLE)
-                    mask.fill_rectangle(
-                        mask_gc, placement.x, placement.y,
-                        placement.image.width, placement.image.height)
+                mask_gc.change(foreground=COLOR_VISIBLE)
+                mask.fill_rectangle(
+                    mask_gc, placement.x, placement.y,
+                    placement.image.width, placement.image.height)
 
-                self.window.put_pil_image(self._window_gc, placement.x, placement.y, placement.image)
+                self.window.put_pil_image(
+                    self._window_gc, placement.x, placement.y, placement.image)
 
             self.window.shape_mask(
                 Xshape.SO.Set, Xshape.SK.Bounding,
-                #Xshape.SO.Union, Xshape.SK.Bounding,
                 0, 0, mask)
         finally:
             if mask_gc:
