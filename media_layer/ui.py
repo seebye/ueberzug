@@ -30,64 +30,6 @@ def get_visual_id(screen, depth: int):
             'Screen does not support %d depth' % depth)
 
 
-def roundup(value, unit):
-    # pylint: disable=W,C,R
-    # source: https://github.com/python-xlib/python-xlib/blob/8ae15f9e990f64a8adbccf38648057a35b03f531/Xlib/xobject/drawable.py#L834
-    return (value + (unit - 1)) & ~(unit - 1)
-
-
-def put_pil_image(self, gc, x, y, image, onerror=None):
-    # pylint: disable=W,C,R
-    # hardly modified version of
-    # https://github.com/python-xlib/python-xlib/blob/8ae15f9e990f64a8adbccf38648057a35b03f531/Xlib/xobject/drawable.py#L213
-    # (forcing it to draw on 32 bit windows,
-    # transparent areas will be black
-    # we need the shape extension to remove them)
-    width, height = image.size
-    if image.mode == '1':
-        format = X.XYBitmap
-        depth = 1
-        if self.display.info.bitmap_format_bit_order == 0:
-            rawmode = '1;R'
-        else:
-            rawmode = '1'
-        pad = self.display.info.bitmap_format_scanline_pad
-        stride = roundup(width, pad) >> 3
-    elif image.mode == 'RGB':
-        format = X.ZPixmap
-        depth = OverlayWindow.SCREEN_DEPTH
-        image.convert('RGBA')
-        if self.display.info.image_byte_order == 0:
-            rawmode = 'BGRX'
-        else:
-            rawmode = 'RGBX'
-        pad = self.display.info.bitmap_format_scanline_pad
-        unit = self.display.info.bitmap_format_scanline_unit
-        stride = roundup(width * unit, pad) >> 3
-    else:
-        raise ValueError('Unknown data format ' + image.mode)
-
-    maxlen = (self.display.info.max_request_length << 2) \
-             - Xrequest.PutImage._request.static_size
-    split = maxlen // stride
-
-    x1 = 0
-    x2 = width
-    y1 = 0
-
-    while y1 < height:
-        h = min(height, split)
-        if h < height:
-            subimage = image.crop((x1, y1, x2, y1 + h))
-        else:
-            subimage = image
-        w, h = subimage.size
-        data = subimage.tobytes("raw", rawmode, stride, 0)
-        self.put_image(gc, x, y, w, h, format, depth, 0, data)
-        y1 = y1 + h
-        y = y + h
-
-
 def get_image_and_mask(image: Image):
     """Splits the image into the displayed pixels
     and it's opacity mask.
@@ -117,7 +59,7 @@ def get_image_and_mask(image: Image):
 
 class OverlayWindow:
     """Ensures unmapping of windows"""
-    SCREEN_DEPTH = 32
+    SCREEN_DEPTH = 24
 
     class Placement:
         def __init__(self, x: int, y: int, image: Image, mask: Image = None):
@@ -160,51 +102,6 @@ class OverlayWindow:
         """Draws the window and updates the visibility mask."""
         COLOR_INVISIBLE = 0
         COLOR_VISIBLE = 1
-        # sometimes get_geometry / ReplyRequests leads to endless waiting..
-        '''
-        Traceback (most recent call first):
-  <built-in method select of module object at remote 0x7fd1481a3b88>
-  File "/usr/local/lib/python3.6/dist-packages/Xlib/protocol/display.py", line 562, in send_and_recv
-    rs, ws, es = select.select([self.socket], writeset, [], timeout)
-  File "/usr/local/lib/python3.6/dist-packages/Xlib/protocol/rq.py", line 1381, in reply
-    self._display.send_and_recv(request = self._serial)
-  File "/usr/local/lib/python3.6/dist-packages/Xlib/protocol/rq.py", line 1369, in __init__
-    self.reply()
-  File "/usr/local/lib/python3.6/dist-packages/Xlib/xobject/drawable.py", line 39, in get_geometry
-    drawable = self)
-  File "/home/nico/Projects/Python/image_layer/image_layer/ui.py", line 161, in draw
-    size = self.window.get_geometry()
-  File "/home/nico/Projects/Python/image_layer/image_layer/batch.py", line 53, in <listcomp>
-    for instance in self.outer]
-  File "/home/nico/Projects/Python/image_layer/image_layer/batch.py", line 53, in __call__
-    for instance in self.outer]
-  File "/home/nico/Projects/Python/image_layer/image_layer/action.py", line 27, in execute
-    self.windows.draw()
-  File "image_layer/image_layer.py", line 78, in main_commands
----Type <return> to continue, or q <return> to quit---
-  File "/usr/lib/python3.6/asyncio/events.py", line 145, in _run
-    self._callback(*self._args)
-  File "/usr/lib/python3.6/asyncio/base_events.py", line 1434, in _run_once
-    handle._run()
-  File "/usr/lib/python3.6/asyncio/base_events.py", line 422, in run_forever
-    self._run_once()
-  File "image_layer/image_layer.py", line 131, in main
-  File "image_layer/image_layer.py", line 139, in <module>
-
-  Thread 1 (Thread 0x7fd14858c740 (LWP 9943)):
- 557                    if recv or flush:
- 558                        timeout = 0
- 559                    else:
- 560                        timeout = None
- 561
->562                    rs, ws, es = select.select([self.socket], writeset, [], timeout)
- 563
- 564                # Ignore errors caused by a signal recieved while blocking.
- 565                # All other errors are re-raised.
- 566                except select.error as err:
- 567                    if isinstance(err, OSError):
-        '''
-        # size = self.window.get_geometry()
         mask = None
         mask_gc = None
 
@@ -218,17 +115,16 @@ class OverlayWindow:
             mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
 
             for placement in self._placements.values():
-                #if placement.mask:
-                #    mask_gc.change(foreground=COLOR_INVISIBLE)
-                #    put_pil_image(mask, mask_gc, placement.x, placement.y, placement.mask)
-                #else:
-                if True:
+                if placement.mask:
+                    mask_gc.change(foreground=COLOR_INVISIBLE)
+                    put_pil_image(mask, mask_gc, placement.x, placement.y, placement.mask)
+                else:
                     mask_gc.change(foreground=COLOR_VISIBLE)
                     mask.fill_rectangle(
                         mask_gc, placement.x, placement.y,
                         placement.image.width, placement.image.height)
 
-                put_pil_image(self.window, self._window_gc, placement.x, placement.y, placement.image)
+                self.window.put_pil_image(self._window_gc, placement.x, placement.y, placement.image)
 
             self.window.shape_mask(
                 Xshape.SO.Set, Xshape.SK.Bounding,
