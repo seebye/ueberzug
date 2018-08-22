@@ -61,6 +61,7 @@ class BatchList(list):
         super().__init__(collection)
         self.__init_attributes__(self[0])
         self.__init_methods__(self[0])
+        self.entered = False
 
     def __declare_decorator__(self, name, decorator):
         setattr(type(self), name, decorator)
@@ -84,13 +85,74 @@ class BatchList(list):
                 self.__declare_decorator__(name, BatchList.BatchField(self, name))
 
     def __enter__(self):
-        # magic methods should be handled by categories, e.g. comporators by one method etc.
-        # but.. it's not really needed in this project so.. let's be lazy..
+        self.entered = True
         return BatchList([instance.__enter__() for instance in self])
 
     def __exit__(self, *args):
         for instance in self:
             instance.__exit__(*args)
+
+    def append(self, item):
+        if self.entered:
+            item.__enter__()
+        super().append(item)
+
+    def extend(self, iterable):
+        items = iterable
+
+        if self.entered:
+            items = []
+
+            for i in iterable:
+                items.append(i)
+                i.__enter__()
+
+        super().extend(items)
+
+    def clear(self):
+        if self.entered:
+            for i in self:
+                i.__exit__(None, None, None)
+        super().clear()
+
+    def insert(self, index, item):
+        if self.entered:
+            item.__enter__()
+        super().insert(index, item)
+
+    def copy(self):
+        return BatchList(super().copy())
+
+    def pop(self, *args):
+        result = super().pop(*args)
+
+        if self.entered:
+            result.__exit__(None, None, None)
+
+        return result
+
+    def remove(self, value):
+        if self.entered:
+            value.__exit__(None, None, None)
+        return super().remove(value)
+
+    def __iadd__(self, other):
+        if self.entered:
+            for i in other:
+                i.__enter__()
+        super().__iadd__(other)
+
+    def __isub__(self, other):
+        for i in other:
+            self.remove(i)
+
+    def __add__(self, other):
+        return BatchList(super().__add__(other))
+
+    def __sub__(self, other):
+        copied = self.copy()
+        copied -= other
+        return copied
 
 
 if __name__ == '__main__':

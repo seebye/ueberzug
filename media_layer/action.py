@@ -1,5 +1,7 @@
 import abc
 import enum
+import distutils.util
+
 import PIL.Image as Image
 
 import media_layer.batch as batch
@@ -8,8 +10,9 @@ import media_layer.xutil as xutil
 
 
 class Executable:
-    def __init__(self, display, windows, media):
+    def __init__(self, display, window_factory, windows, media):
         self.display = display
+        self.window_factory = window_factory
         self.windows = windows
         self.media = media
 
@@ -25,25 +28,36 @@ class AddImageAction(Executable):
     it's going to be replaced.
     """
     def execute(self, identifier, x, y, path, #pylint: disable=W0221,R0913
-                width=None, height=None, scale=None):
+                width=None, height=None,
+                max_width=None, max_height=None,
+                draw=None):
+        draw = draw or 'True'
         image = Image.open(path)
-        width = int(width) if width else image.width
-        height = int(height) if height else image.height
-        scale = float(scale) if scale else 1
-        image = image.resize((int(width * scale),
-                              int(height * scale)))
+        x = int(x)
+        y = int(y)
+        width = int(width) if width else None
+        height = int(height) if height else None
+        max_width = int(max_width) if max_width else None
+        max_height = int(max_height) if max_height else None
         image_rgb, mask = ui.get_image_and_mask(image)
         self.media[identifier] = ui.OverlayWindow.Placement(
-            int(x), int(y), image_rgb, mask)
-        self.windows.draw()
+            x, y, width, height, max_width, max_height,
+            image_rgb, mask)
+
+        if distutils.util.strtobool(draw):
+            self.windows.draw()
 
 
 class RemoveImageAction(Executable):
     """Removes the image with the passed identifier."""
-    def execute(self, identifier): #pylint: disable=W0221
+    def execute(self, identifier, draw=None): #pylint: disable=W0221
+        draw = draw or 'True'
+
         if identifier in self.media:
             del self.media[identifier]
-            self.windows.draw()
+
+            if distutils.util.strtobool(draw):
+                self.windows.draw()
 
 
 class QueryWindowsAction(Executable):
@@ -52,7 +66,10 @@ class QueryWindowsAction(Executable):
     Removed clients: existing windows will be destroyed
     """
     def execute(self): #pylint: disable=W0221
-        parent_window_ids = set(xutil.get_parent_window_ids(self.display))
+        parent_window_infos = xutil.get_parent_window_infos(self.display)
+        map_parent_window_id_info = {info.window_id: info
+                                     for info in parent_window_infos}
+        parent_window_ids = map_parent_window_id_info.keys()
         map_current_windows = {window.parent_window.id: window
                                for window in self.windows}
         current_window_ids = map_current_windows.keys()
@@ -61,17 +78,16 @@ class QueryWindowsAction(Executable):
         removed_window_ids = diff_window_ids & current_window_ids
 
         if added_window_ids:
-            added_windows = batch.BatchList([ui.OverlayWindow(self.display, wid, self.media)
-                                             for wid in added_window_ids])
-            added_windows.map()
-            added_windows.draw()
-            self.windows += added_windows
+            self.windows += self.window_factory.create(*[
+                map_parent_window_id_info.get(wid)
+                for wid in added_window_ids
+            ])
 
-        for wid in removed_window_ids:
-            window = map_current_windows.get(wid)
-            if window:
-                window.destroy()
-                self.windows.remove(window)
+        if removed_window_ids:
+            self.windows -= [
+                map_current_windows.get(wid)
+                for wid in removed_window_ids
+            ]
 
 
 @enum.unique

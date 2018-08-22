@@ -47,7 +47,7 @@ async def main_xevents(loop, display, windows):
 
 
 async def main_commands(loop, shutdown_routine, parser_object,
-                        display, windows, media):
+                        display, window_factory, windows, media):
     """Coroutine which processes the input of stdin"""
     async for line in aio.LineReader(loop, sys.stdin):
         if not line:
@@ -57,7 +57,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
         try:
             data = parser_object.parse(line[:-1])
             command = action.Command(data.pop('action')) #pylint: disable=E1120
-            command.action_class(display, windows, media) \
+            command.action_class(display, window_factory, windows, media) \
                     .execute(**data)
         except (parser.ParseError, KeyError, ValueError, TypeError) as error:
             cause = (error.args[0]
@@ -80,16 +80,14 @@ async def shutdown(loop):
 
 def main_image(options):
     display = Xdisplay.Display()
-    window_ids = xutil.get_parent_window_ids(display)
+    window_infos = xutil.get_parent_window_infos(display)
     loop = asyncio.get_event_loop()
     executor = futures.ThreadPoolExecutor(max_workers=2)
     shutdown_routine = shutdown(loop) #pylint: disable=E1111
     parser_class = parser.ParserOption(options['--parser']).parser_class
     media = {}
-    # TODO draw image via pillow and draw result via xlib -> likely less flashing
-    # TODO implement window factory instead of creating them manually?
-    windows = batch.BatchList([ui.OverlayWindow(display, wid, media)
-                               for wid in window_ids])
+    window_factory = ui.OverlayWindow.Factory(display, media)
+    windows = batch.BatchList(window_factory.create(*window_infos))
 
     with windows:
         # this could lead to unexpected behavior,
@@ -109,12 +107,12 @@ def main_image(options):
 
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(
-            loop, shutdown_routine, parser_class(), display, windows, media))
+            loop, shutdown_routine, parser_class(),
+            display, window_factory, windows, media))
 
         try:
             loop.run_forever()
         finally:
-            #await shutdown_routine
             loop.close()
             executor.shutdown(wait=False)
 

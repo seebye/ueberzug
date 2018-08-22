@@ -1,12 +1,13 @@
 """This module contains x11 utils"""
 import os
-import subprocess
+import functools
+
 import Xlib
 import Xlib.display as Xdisplay
 import psutil
 
-ENV_KEY_TMUX_PANE = 'TMUX_PANE'
-ENV_KEY_WINDOW_ID = 'WINDOWID'
+import media_layer.tmux_util as tmux_util
+import media_layer.terminal as terminal
 
 
 class Events:
@@ -28,6 +29,13 @@ class Events:
         return await Events.receive_event(self._loop, self._display)
 
 
+class TerminalWindowInfo(terminal.TerminalInfo):
+    def __init__(self, window_id, fd_pty=None):
+        super().__init__(fd_pty)
+        self.window_id = window_id
+
+
+@functools.lru_cache()
 def get_parent_pids(pid=None):
     pids = []
     process = psutil.Process(pid=pid)
@@ -40,31 +48,36 @@ def get_parent_pids(pid=None):
     return pids
 
 
-def get_tmux_clients(target):
-    """Determines each tmux client
-    displaying the pane this program runs in.
+def get_pid_by_window_id(display: Xdisplay.Display, window_id: int):
+    window = display.create_resource_object('window', window_id)
+    prop = window.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
+    return prop.value[0]
+
+
+def get_pid_window_id_map(display: Xdisplay.Display):
+    """Determines the pid of each mapped window.
+
+    Returns:
+        dict of {pid: window_id}
     """
-    return [int(pid) for pid in
-            subprocess.check_output([
-                'tmux', 'list-clients',
-                '-F', '#{client_pid}',
-                '-t', target
-            ]).decode().splitlines()]
+    root = display.screen().root
+    win_ids = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'),
+                                     Xlib.X.AnyPropertyType).value
+
+    return {
+        get_pid_by_window_id(display, window_id): window_id
+        for window_id in win_ids
+    }
 
 
-def get_first_window_id(display: Xdisplay.Display, pids):
+def get_first_window_id(display: Xdisplay.Display,
+                        pid_window_id_map: dict, pids: list):
     """Determines the window id of the youngest
     parent owning a window.
     """
-    root = display.screen().root
     win_ids_res = [None] * len(pids)
-    win_ids = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'),
-                                     Xlib.X.AnyPropertyType).value
-    for window_id in win_ids:
-        window = display.create_resource_object('window', window_id)
-        prop = window.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
-        pid = prop.value[0]
 
+    for pid, window_id in pid_window_id_map.items():
         try:
             win_ids_res[pids.index(pid)] = window_id
         except ValueError:
@@ -78,26 +91,32 @@ def get_first_window_id(display: Xdisplay.Display, pids):
         return None
 
 
-def get_parent_window_ids(display: Xdisplay.Display):
+def get_parent_window_infos(display: Xdisplay.Display):
     """Determines the window id of each
     terminal which displays the program using
     this layer.
+
+    Returns:
+        list of TerminalWindowInfo
     """
-    window_ids = []
-    client_pids = []
-    tmux_pane = os.environ.get(ENV_KEY_TMUX_PANE)
-    environ_window_id = os.environ.get(ENV_KEY_WINDOW_ID)
+    window_infos = []
+    clients_pid_tty = {}
+    environ_window_id = os.environ.get('WINDOWID')
 
-    if tmux_pane is not None:
-        client_pids = get_tmux_clients(tmux_pane)
+    if tmux_util.is_used():
+        clients_pid_tty = tmux_util.get_client_ttys_by_pid()
     elif environ_window_id is not None:
-        window_ids.append(int(environ_window_id))
+        window_infos.append(TerminalWindowInfo(int(environ_window_id)))
     else:
-        client_pids = [psutil.Process().pid]
+        clients_pid_tty = {psutil.Process().pid: None}
 
-    for pid in client_pids:
-        wid = get_first_window_id(display, get_parent_pids(pid))
-        if wid:
-            window_ids.append(wid)
+    if clients_pid_tty:
+        pid_window_id_map = get_pid_window_id_map(display)
 
-    return window_ids
+        for pid, pty in clients_pid_tty.items():
+            wid = get_first_window_id(display, pid_window_id_map,
+                                      get_parent_pids(pid))
+            if wid:
+                window_infos.append(TerminalWindowInfo(wid, pty))
+
+    return window_infos

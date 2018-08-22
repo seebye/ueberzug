@@ -1,12 +1,14 @@
 """This module contains user interface related classes and methods.
 """
-import contextlib
+import abc
+
 import Xlib.X as X
 import Xlib.display as Xdisplay
 import Xlib.ext.shape as Xshape
-import Xlib.protocol.request as Xrequest
 import Xlib.protocol.event as Xevent
 import PIL.Image as Image
+
+import media_layer.xutil as xutil
 
 
 INDEX_ALPHA_CHANNEL = 3
@@ -57,22 +59,85 @@ def get_image_and_mask(image: Image):
     return image, mask
 
 
+class WindowFactory:
+    """Window factory class"""
+    def __init__(self, display):
+        self.display = display
+
+    @abc.abstractmethod
+    def create(self, *window_infos: xutil.TerminalWindowInfo):
+        """Creates a child window for each window id."""
+        raise NotImplementedError()
+
+
 class OverlayWindow:
     """Ensures unmapping of windows"""
     SCREEN_DEPTH = 24
 
+    class Factory(WindowFactory):
+        """OverlayWindows factory class"""
+        def __init__(self, display, media):
+            super().__init__(display)
+            self.media = media
+
+        def create(self, *window_infos: xutil.TerminalWindowInfo):
+            return [OverlayWindow(self.display, self.media, info)
+                    for info in window_infos]
+
     class Placement:
-        def __init__(self, x: int, y: int, image: Image, mask: Image = None):
+        def __init__(self, x: int, y: int, width: int, height: int,
+                     max_width: int, max_height: int,
+                     image: Image, mask: Image = None):
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             self.x = x
             self.y = y
+            self.width = width
+            self.max_width = max_width
+            self.height = height
+            self.max_height = max_height
             self.image = image
             self.mask = mask
 
+        def resolve(self, term_info: xutil.TerminalWindowInfo):
+            """Resolves the position and size of the image
+            according to the teminal window information.
 
-    def __init__(self, display: Xdisplay.Display, parent_id: int,
-                 placements: dict):
+            Returns:
+                tuple of (x: int, y: int, width: int, height: int,
+                          resized_image: PIL.Image)
+            """
+            # x, y are useful names in this case
+            # pylint: disable=invalid-name
+            x = (self.x * term_info.font_width +
+                 term_info.padding)
+            y = (self.y * term_info.font_height +
+                 term_info.padding)
+            width = self.width * term_info.font_width \
+                    if self.width \
+                    else self.image.width
+            height = self.height * term_info.font_height \
+                    if self.height \
+                    else self.image.height
+            max_width = self.max_width and \
+                    (self.max_width * term_info.font_width)
+            max_height = self.max_height and \
+                    (self.max_height * term_info.font_height)
+
+            if (max_width and max_width < width):
+                height = height * max_width / width
+                width = max_width
+            if (max_height and max_height < height):
+                width = width * max_height / height
+                height = max_height
+
+            image = self.image.resize((int(width), int(height)))
+
+            return int(x), int(y), int(width), int(height), image
+
+
+    def __init__(self, display: Xdisplay.Display,
+                 placements: dict, term_info: xutil.TerminalWindowInfo):
         """Changes the foreground color of the gc object.
 
         Args:
@@ -81,8 +146,8 @@ class OverlayWindow:
         """
         self._display = display
         self._screen = display.screen()
-        self._parent_id = parent_id
         self._colormap = None
+        self.parent_info = term_info
         self.parent_window = None
         self.window = None
         self._window_gc = None
@@ -93,6 +158,7 @@ class OverlayWindow:
 
     def __enter__(self):
         self.map()
+        self.draw()
         return self
 
     def __exit__(self, *args):
@@ -115,13 +181,15 @@ class OverlayWindow:
             mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
 
             for placement in self._placements.values():
+                # x, y are useful names in this case
+                # pylint: disable=invalid-name
+                x, y, width, height, image = placement.resolve(self.parent_info)
+
                 mask_gc.change(foreground=COLOR_VISIBLE)
-                mask.fill_rectangle(
-                    mask_gc, placement.x, placement.y,
-                    placement.image.width, placement.image.height)
+                mask.fill_rectangle(mask_gc, x, y, width, height)
 
                 self.window.put_pil_image(
-                    self._window_gc, placement.x, placement.y, placement.image)
+                    self._window_gc, x, y, image)
 
             self.window.shape_mask(
                 Xshape.SO.Set, Xshape.SK.Bounding,
@@ -141,7 +209,8 @@ class OverlayWindow:
 
         visual_id = get_visual_id(self._screen, OverlayWindow.SCREEN_DEPTH)
         self._colormap = self._screen.root.create_colormap(visual_id, X.AllocNone)
-        self.parent_window = self._display.create_resource_object('window', self._parent_id)
+        self.parent_window = self._display.create_resource_object(
+            'window', self.parent_info.window_id)
         parent_size = self.parent_window.get_geometry()
         self._width, self._height = parent_size.width, parent_size.height
         #print('parent', self.parent_window.id)
