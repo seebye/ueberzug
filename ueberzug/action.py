@@ -4,9 +4,9 @@ import distutils.util
 
 import PIL.Image as Image
 
-import media_layer.batch as batch
-import media_layer.ui as ui
-import media_layer.xutil as xutil
+import ueberzug.batch as batch
+import ueberzug.ui as ui
+import ueberzug.xutil as xutil
 
 
 class Executable:

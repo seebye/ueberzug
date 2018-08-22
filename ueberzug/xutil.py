@@ -6,8 +6,8 @@ import Xlib
 import Xlib.display as Xdisplay
 import psutil
 
-import media_layer.tmux_util as tmux_util
-import media_layer.terminal as terminal
+import ueberzug.tmux_util as tmux_util
+import ueberzug.terminal as terminal
 
 
 class Events:

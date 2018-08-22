@@ -8,7 +8,7 @@ import Xlib.ext.shape as Xshape
 import Xlib.protocol.event as Xevent
 import PIL.Image as Image
 
-import media_layer.xutil as xutil
+import ueberzug.xutil as xutil
 
 
 INDEX_ALPHA_CHANNEL = 3

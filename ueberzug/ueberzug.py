@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Usage:
-    media_layer ROUTINE [options]
+    ueberzug ROUTINE [options]
 
 Routines:
     image                   Display images
@@ -15,7 +15,7 @@ Image options:
 
 
 License:
-    media_layer  Copyright (C) 2018  Nico Baeurer
+    ueberzug  Copyright (C) 2018  Nico Baeurer
     This program comes with ABSOLUTELY NO WARRANTY.
     This is free software, and you are welcome to redistribute it
     under certain conditions.
@@ -32,12 +32,12 @@ import pathlib
 import docopt
 import Xlib.display as Xdisplay
 
-import media_layer.aio as aio
-import media_layer.xutil as xutil
-import media_layer.parser as parser
-import media_layer.ui as ui
-import media_layer.batch as batch
-import media_layer.action as action
+import ueberzug.aio as aio
+import ueberzug.xutil as xutil
+import ueberzug.parser as parser
+import ueberzug.ui as ui
+import ueberzug.batch as batch
+import ueberzug.action as action
 
 
 async def main_xevents(loop, display, windows):
