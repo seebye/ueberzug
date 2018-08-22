@@ -60,6 +60,6 @@ function ImageLayer::remove {
     ImageLayer::build_command remove "identifier" "$@"
 }
 
-function ImageLayer::focus_changed {
-    ImageLayer::build_command focus_changed "" "$@"
+function ImageLayer::query_windows {
+    ImageLayer::build_command query_windows "" "$@"
 }
