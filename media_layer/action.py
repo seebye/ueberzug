@@ -46,7 +46,7 @@ class RemoveImageAction(Executable):
             self.windows.draw()
 
 
-class FocusAction(Executable):
+class QueryWindowsAction(Executable):
     """Searches for added and removed tmux clients.
     Added clients: additional windows will be mapped
     Removed clients: existing windows will be destroyed
@@ -78,7 +78,7 @@ class FocusAction(Executable):
 class Command(str, enum.Enum):
     ADD = 'add', AddImageAction
     REMOVE = 'remove', RemoveImageAction
-    FOCUS_CHANGED = 'focus_changed', FocusAction
+    FOCUS_CHANGED = 'query_windows', QueryWindowsAction
 
     def __new__(cls, identifier, action_class):
         inst = str.__new__(cls)
