@@ -59,8 +59,9 @@ class BatchList(list):
                              'as python declares (non static) class fields within __init__.')
 
         super().__init__(collection)
-        self.__init_attributes__(self[0])
-        self.__init_methods__(self[0])
+        if self:
+            self.__init_attributes__(self[0])
+            self.__init_methods__(self[0])
         self.entered = False
 
     def __declare_decorator__(self, name, decorator):

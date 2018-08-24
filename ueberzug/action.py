@@ -10,8 +10,7 @@ import ueberzug.xutil as xutil
 
 
 class Executable:
-    def __init__(self, display, window_factory, windows, media):
-        self.display = display
+    def __init__(self, window_factory, windows, media):
         self.window_factory = window_factory
         self.windows = windows
         self.media = media
@@ -44,7 +43,8 @@ class AddImageAction(Executable):
             x, y, width, height, max_width, max_height,
             image_rgb, mask)
 
-        if distutils.util.strtobool(draw):
+        if (distutils.util.strtobool(draw) and
+                self.windows):
             self.windows.draw()
 
 
@@ -56,7 +56,8 @@ class RemoveImageAction(Executable):
         if identifier in self.media:
             del self.media[identifier]
 
-            if distutils.util.strtobool(draw):
+            if (distutils.util.strtobool(draw) and
+                    self.windows):
                 self.windows.draw()
 
 
@@ -66,7 +67,8 @@ class QueryWindowsAction(Executable):
     Removed clients: existing windows will be destroyed
     """
     def execute(self): #pylint: disable=W0221
-        parent_window_infos = xutil.get_parent_window_infos(self.display)
+        draw = False
+        parent_window_infos = xutil.get_parent_window_infos()
         map_parent_window_id_info = {info.window_id: info
                                      for info in parent_window_infos}
         parent_window_ids = map_parent_window_id_info.keys()
@@ -78,16 +80,21 @@ class QueryWindowsAction(Executable):
         removed_window_ids = diff_window_ids & current_window_ids
 
         if added_window_ids:
+            draw = True
             self.windows += self.window_factory.create(*[
                 map_parent_window_id_info.get(wid)
                 for wid in added_window_ids
             ])
 
         if removed_window_ids:
+            draw = True
             self.windows -= [
                 map_current_windows.get(wid)
                 for wid in removed_window_ids
             ]
+
+        if (draw and self.windows):
+            self.windows.draw()
 
 
 @enum.unique

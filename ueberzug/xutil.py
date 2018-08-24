@@ -1,6 +1,7 @@
 """This module contains x11 utils"""
 import os
 import functools
+import asyncio
 
 import Xlib
 import Xlib.display as Xdisplay
@@ -9,6 +10,12 @@ import psutil
 import ueberzug.tmux_util as tmux_util
 import ueberzug.terminal as terminal
 
+
+Xdisplay.Display.__enter__ = lambda self: self
+Xdisplay.Display.__exit__ = lambda self, *args: self.close()
+
+PREPARED_DISPLAYS = []
+DISPLAY_SUPPLIES = 5
 
 class Events:
     """Async iterator class for x11 events"""
@@ -35,6 +42,24 @@ class TerminalWindowInfo(terminal.TerminalInfo):
         self.window_id = window_id
 
 
+async def prepare_display():
+    """Fills up the display supplies."""
+    PREPARED_DISPLAYS.append(Xdisplay.Display())
+
+
+def get_display():
+    """Unfortunately, Xlib tends to produce death locks
+    on request with an expected reply.
+    (e.g. Drawable#get_geometry)
+    Use for each request a new display as workaround.
+    """
+    for i in range(len(PREPARED_DISPLAYS) - 1, DISPLAY_SUPPLIES):
+        asyncio.ensure_future(prepare_display())
+    if not PREPARED_DISPLAYS:
+        return Xdisplay.Display()
+    return PREPARED_DISPLAYS.pop()
+
+
 @functools.lru_cache()
 def get_parent_pids(pid=None):
     pids = []
@@ -54,24 +79,24 @@ def get_pid_by_window_id(display: Xdisplay.Display, window_id: int):
     return prop.value[0]
 
 
-def get_pid_window_id_map(display: Xdisplay.Display):
+def get_pid_window_id_map():
     """Determines the pid of each mapped window.
 
     Returns:
         dict of {pid: window_id}
     """
-    root = display.screen().root
-    win_ids = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'),
-                                     Xlib.X.AnyPropertyType).value
+    with get_display() as display:
+        root = display.screen().root
+        win_ids = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'),
+                                         Xlib.X.AnyPropertyType).value
 
-    return {
-        get_pid_by_window_id(display, window_id): window_id
-        for window_id in win_ids
-    }
+        return {
+            get_pid_by_window_id(display, window_id): window_id
+            for window_id in win_ids
+        }
 
 
-def get_first_window_id(display: Xdisplay.Display,
-                        pid_window_id_map: dict, pids: list):
+def get_first_window_id(pid_window_id_map: dict, pids: list):
     """Determines the window id of the youngest
     parent owning a window.
     """
@@ -91,7 +116,7 @@ def get_first_window_id(display: Xdisplay.Display,
         return None
 
 
-def get_parent_window_infos(display: Xdisplay.Display):
+def get_parent_window_infos():
     """Determines the window id of each
     terminal which displays the program using
     this layer.
@@ -111,10 +136,10 @@ def get_parent_window_infos(display: Xdisplay.Display):
         clients_pid_tty = {psutil.Process().pid: None}
 
     if clients_pid_tty:
-        pid_window_id_map = get_pid_window_id_map(display)
+        pid_window_id_map = get_pid_window_id_map()
 
         for pid, pty in clients_pid_tty.items():
-            wid = get_first_window_id(display, pid_window_id_map,
+            wid = get_first_window_id(pid_window_id_map,
                                       get_parent_pids(pid))
             if wid:
                 window_infos.append(TerminalWindowInfo(wid, pty))

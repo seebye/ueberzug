@@ -217,7 +217,11 @@ class OverlayWindow:
         self._colormap = self._screen.root.create_colormap(visual_id, X.AllocNone)
         self.parent_window = self._display.create_resource_object(
             'window', self.parent_info.window_id)
-        parent_size = self.parent_window.get_geometry()
+        parent_size = None
+        with xutil.get_display() as display:
+            parent_window = display.create_resource_object(
+                'window', self.parent_info.window_id)
+            parent_size = parent_window.get_geometry()
         self._width, self._height = parent_size.width, parent_size.height
         #print('parent', self.parent_window.id)
 

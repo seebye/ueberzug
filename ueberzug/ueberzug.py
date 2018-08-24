@@ -28,6 +28,7 @@ import signal
 import functools
 import concurrent.futures as futures
 import pathlib
+import traceback
 
 import docopt
 import Xlib.display as Xdisplay
@@ -43,11 +44,12 @@ import ueberzug.action as action
 async def main_xevents(loop, display, windows):
     """Coroutine which processes X11 events"""
     async for event in xutil.Events(loop, display):
-        windows.process_event(event)
+        if windows:
+            windows.process_event(event)
 
 
 async def main_commands(loop, shutdown_routine, parser_object,
-                        display, window_factory, windows, media):
+                        window_factory, windows, media):
     """Coroutine which processes the input of stdin"""
     async for line in aio.LineReader(loop, sys.stdin):
         if not line:
@@ -57,7 +59,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
         try:
             data = parser_object.parse(line[:-1])
             command = action.Command(data.pop('action')) #pylint: disable=E1120
-            command.action_class(display, window_factory, windows, media) \
+            command.action_class(window_factory, windows, media) \
                     .execute(**data)
         except (parser.ParseError, KeyError, ValueError, TypeError) as error:
             cause = (error.args[0]
@@ -66,7 +68,8 @@ async def main_commands(loop, shutdown_routine, parser_object,
             print(parser_object.unparse({
                 'type': 'error',
                 'name': type(cause).__name__,
-                'message': str(error)
+                'message': str(error),
+                #'stack': traceback.format_exc()
             }), file=sys.stderr)
 
 
@@ -79,8 +82,8 @@ async def shutdown(loop):
 
 
 def main_image(options):
-    display = Xdisplay.Display()
-    window_infos = xutil.get_parent_window_infos(display)
+    display = xutil.get_display()
+    window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = futures.ThreadPoolExecutor(max_workers=2)
     shutdown_routine = shutdown(loop) #pylint: disable=E1111
@@ -108,7 +111,7 @@ def main_image(options):
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(
             loop, shutdown_routine, parser_class(),
-            display, window_factory, windows, media))
+            window_factory, windows, media))
 
         try:
             loop.run_forever()

@@ -15,6 +15,19 @@ def get_pane():
     return os.environ.get('TMUX_PANE')
 
 
+def is_window_focused():
+    """Determines whether the window
+    which owns the pane
+    which owns this process is focused.
+    """
+    result = subprocess.check_output([
+        'tmux', 'display', '-p',
+        '-F', '#{window_active}',
+        '-t', get_pane()
+    ]).decode()
+    return result == "1\n"
+
+
 def get_clients():
     """Determines each tmux client
     displaying the pane this program runs in.
@@ -31,6 +44,9 @@ def get_client_ttys_by_pid():
     """Determines the tty for each tmux client
     displaying the pane this program runs in.
     """
+    if not is_window_focused():
+        return {}
+
     return {int(pid): tty
             for pid_tty in
             subprocess.check_output([
