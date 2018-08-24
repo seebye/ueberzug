@@ -55,6 +55,12 @@ def get_image_and_mask(image: Image):
         image_rgb.paste(image, mask=image_alpha)
         mask.paste(0, mask=image_alpha)
         image = image_rgb
+    else:
+        # convert to supported image formats
+        image.load()
+        image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
+        image_rgb.paste(image)
+        image = image_rgb
 
     return image, mask
 
