@@ -29,18 +29,6 @@ def is_window_focused():
     return result == "1,0\n"
 
 
-def get_clients():
-    """Determines each tmux client
-    displaying the pane this program runs in.
-    """
-    return [int(pid) for pid in
-            subprocess.check_output([
-                'tmux', 'list-clients',
-                '-F', '#{client_pid}',
-                '-t', get_pane()
-            ]).decode().splitlines()]
-
-
 def get_client_ttys_by_pid():
     """Determines the tty for each tmux client
     displaying the pane this program runs in.
