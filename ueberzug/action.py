@@ -29,7 +29,8 @@ class AddImageAction(Executable):
                 width=None, height=None,
                 max_width=None, max_height=None,
                 draw=None):
-        draw = draw or 'True'
+        draw = (draw if isinstance(draw, bool)
+                else distutils.util.strtobool(draw or 'True'))
         image = Image.open(path)
         x = int(x)
         y = int(y)
@@ -42,21 +43,20 @@ class AddImageAction(Executable):
             x, y, width, height, max_width, max_height,
             image_rgb, mask)
 
-        if (distutils.util.strtobool(draw) and
-                self.windows):
+        if draw and self.windows:
             self.windows.draw()
 
 
 class RemoveImageAction(Executable):
     """Removes the image with the passed identifier."""
     def execute(self, identifier, draw=None): #pylint: disable=W0221
-        draw = draw or 'True'
+        draw = (draw if isinstance(draw, bool)
+                else distutils.util.strtobool(draw or 'True'))
 
         if identifier in self.media:
             del self.media[identifier]
 
-            if (distutils.util.strtobool(draw) and
-                    self.windows):
+            if draw and self.windows:
                 self.windows.draw()
 
 
