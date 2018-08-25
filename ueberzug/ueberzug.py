@@ -3,8 +3,8 @@
     ueberzug ROUTINE [options]
 
 Routines:
-    image                   Display images
-    library                 Print bash library path
+    layer                   Display images
+    library                 Prints the path to the bash library
 
 Image options:
     -p, --parser <parser>  one of json, simple, bash
@@ -143,7 +143,7 @@ def setup_tmux_hooks():
     return remove_hooks
 
 
-def main_image(options):
+def main_layer(options):
     display = xutil.get_display()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
@@ -198,7 +198,7 @@ def main():
     options = docopt.docopt(__doc__)
     routine = options['ROUTINE'] 
 
-    if routine == 'image':
+    if routine == 'layer':
         main_image(options)
     elif routine == 'library':
         main_library()
