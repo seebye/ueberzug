@@ -103,7 +103,7 @@ async def query_windows(window_factory, windows):
             for wid in removed_window_ids
         ]
 
-    if (draw and windows):
+    if draw and windows:
         windows.draw()
 
 
