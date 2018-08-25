@@ -78,13 +78,26 @@ Removes an image from the screen.
 
 ## Examples
 
-Json add command: `{"action": "add", "x": 0, "y": 0, "path": "some path"}`  
-Simple add command: `action add x   0   y   0   path    some path`  
-Bash add command: `declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )`  
-```
-$ declare -A command=([action]=add [x]=0 [y]=0 [path]="/some/path/some_image.jpg")
-$ declare -p command
-declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )
+Command formats:
+
+- Json add command: `{"action": "add", "x": 0, "y": 0, "path": "/some/path/some_image.jpg"}`  
+- Simple add command: `action add x   0   y   0   path    /some/path/some_image.jpg`  
+- Bash add command: `declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )`  
+
+Bash library:
+
+```bash
+source "`python3 -m ueberzug library`"
+
+ImageLayer -< <(
+    ImageLayer::add [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg"
+    ImageLayer::add [identifier]="example1" [x]="0" [y]="0" [path]="/some/path/some_image1.jpg"
+    read
+    ImageLayer::remove [identifier]="example0"
+    read
+)
 ```
 
-Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
+Scripts:
+
+- Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
