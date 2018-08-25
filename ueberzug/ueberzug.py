@@ -199,7 +199,7 @@ def main():
     routine = options['ROUTINE'] 
 
     if routine == 'layer':
-        main_image(options)
+        main_layer(options)
     elif routine == 'library':
         main_library()
 
