@@ -10,8 +10,7 @@ import ueberzug.xutil as xutil
 
 
 class Executable:
-    def __init__(self, window_factory, windows, media):
-        self.window_factory = window_factory
+    def __init__(self, windows, media):
         self.windows = windows
         self.media = media
 
@@ -61,47 +60,10 @@ class RemoveImageAction(Executable):
                 self.windows.draw()
 
 
-class QueryWindowsAction(Executable):
-    """Searches for added and removed tmux clients.
-    Added clients: additional windows will be mapped
-    Removed clients: existing windows will be destroyed
-    """
-    def execute(self): #pylint: disable=W0221
-        draw = False
-        parent_window_infos = xutil.get_parent_window_infos()
-        map_parent_window_id_info = {info.window_id: info
-                                     for info in parent_window_infos}
-        parent_window_ids = map_parent_window_id_info.keys()
-        map_current_windows = {window.parent_window.id: window
-                               for window in self.windows}
-        current_window_ids = map_current_windows.keys()
-        diff_window_ids = parent_window_ids ^ current_window_ids
-        added_window_ids = diff_window_ids & parent_window_ids
-        removed_window_ids = diff_window_ids & current_window_ids
-
-        if added_window_ids:
-            draw = True
-            self.windows += self.window_factory.create(*[
-                map_parent_window_id_info.get(wid)
-                for wid in added_window_ids
-            ])
-
-        if removed_window_ids:
-            draw = True
-            self.windows -= [
-                map_current_windows.get(wid)
-                for wid in removed_window_ids
-            ]
-
-        if (draw and self.windows):
-            self.windows.draw()
-
-
 @enum.unique
 class Command(str, enum.Enum):
     ADD = 'add', AddImageAction
     REMOVE = 'remove', RemoveImageAction
-    FOCUS_CHANGED = 'query_windows', QueryWindowsAction
 
     def __new__(cls, identifier, action_class):
         inst = str.__new__(cls)

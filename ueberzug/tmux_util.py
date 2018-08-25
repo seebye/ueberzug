@@ -1,4 +1,5 @@
 import subprocess
+import shlex
 import os
 
 
@@ -22,10 +23,10 @@ def is_window_focused():
     """
     result = subprocess.check_output([
         'tmux', 'display', '-p',
-        '-F', '#{window_active}',
+        '-F', '#{window_active},#{pane_in_mode}',
         '-t', get_pane()
     ]).decode()
-    return result == "1\n"
+    return result == "1,0\n"
 
 
 def get_clients():
@@ -55,3 +56,27 @@ def get_client_ttys_by_pid():
                 '-t', get_pane()
             ]).decode().splitlines()
             for pid, tty in (pid_tty.split(','),)}
+
+
+def register_hook(event, command):
+    """Updates the hook of the passed event
+    for the pane this program runs in
+    to the execution of a program.
+
+    Note: tmux does not support multiple hooks for the same target.
+    So if there's already an hook registered it will be overwritten.
+    """
+    subprocess.check_call([
+        'tmux', 'set-hook',
+        '-t', get_pane(),
+        event, 'run-shell ' + shlex.quote(command)
+    ])
+
+
+def unregister_hook(event):
+    """Removes the hook of the passed event
+    for the pane this program runs in.
+    """
+    subprocess.check_call([
+        'tmux', 'set-hook', '-u', '-t', get_pane(), event
+    ])

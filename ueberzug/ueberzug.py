@@ -31,7 +31,6 @@ import pathlib
 import traceback
 
 import docopt
-import Xlib.display as Xdisplay
 
 import ueberzug.aio as aio
 import ueberzug.xutil as xutil
@@ -39,6 +38,7 @@ import ueberzug.parser as parser
 import ueberzug.ui as ui
 import ueberzug.batch as batch
 import ueberzug.action as action
+import ueberzug.tmux_util as tmux_util
 
 
 async def main_xevents(loop, display, windows):
@@ -49,7 +49,7 @@ async def main_xevents(loop, display, windows):
 
 
 async def main_commands(loop, shutdown_routine, parser_object,
-                        window_factory, windows, media):
+                        windows, media):
     """Coroutine which processes the input of stdin"""
     async for line in aio.LineReader(loop, sys.stdin):
         if not line:
@@ -59,7 +59,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
         try:
             data = parser_object.parse(line[:-1])
             command = action.Command(data.pop('action')) #pylint: disable=E1120
-            command.action_class(window_factory, windows, media) \
+            command.action_class(windows, media) \
                     .execute(**data)
         except (parser.ParseError, KeyError, ValueError, TypeError) as error:
             cause = (error.args[0]
@@ -73,12 +73,76 @@ async def main_commands(loop, shutdown_routine, parser_object,
             }), file=sys.stderr)
 
 
+async def query_windows(window_factory, windows):
+    """Signal handler for SIGUSR1.
+    Searches for added and removed tmux clients.
+    Added clients: additional windows will be mapped
+    Removed clients: existing windows will be destroyed
+    """
+    draw = False
+    parent_window_infos = xutil.get_parent_window_infos()
+    map_parent_window_id_info = {info.window_id: info
+                                 for info in parent_window_infos}
+    parent_window_ids = map_parent_window_id_info.keys()
+    map_current_windows = {window.parent_window.id: window
+                           for window in windows}
+    current_window_ids = map_current_windows.keys()
+    diff_window_ids = parent_window_ids ^ current_window_ids
+    added_window_ids = diff_window_ids & parent_window_ids
+    removed_window_ids = diff_window_ids & current_window_ids
+
+    if added_window_ids:
+        draw = True
+        windows += window_factory.create(*[
+            map_parent_window_id_info.get(wid)
+            for wid in added_window_ids
+        ])
+
+    if removed_window_ids:
+        draw = True
+        windows -= [
+            map_current_windows.get(wid)
+            for wid in removed_window_ids
+        ]
+
+    if (draw and windows):
+        windows.draw()
+
+
 async def shutdown(loop):
     tasks = [task for task in asyncio.Task.all_tasks() if task is not
              asyncio.tasks.Task.current_task()]
     list(map(lambda task: task.cancel(), tasks))
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
+
+
+def setup_tmux_hooks():
+    """Registers tmux hooks which are
+    required to notice a change in the visibility
+    of the pane this program runs in.
+    Also it's required to notice new tmux clients
+    displaying our pane.
+
+    Returns:
+        function which unregisters the registered hooks
+    """
+    events = (
+        'client-session-changed',
+        'session-window-changed',
+        'pane-mode-changed'
+    )
+    command = 'kill -USR1 ' + str(os.getpid())
+
+    for event in events:
+        tmux_util.register_hook(event, command)
+
+    def remove_hooks():
+        """Removes the hooks registered by the outer function."""
+        for event in events:
+            tmux_util.unregister_hook(event)
+
+    return remove_hooks
 
 
 def main_image(options):
@@ -91,6 +155,9 @@ def main_image(options):
     media = {}
     window_factory = ui.OverlayWindow.Factory(display, media)
     windows = batch.BatchList(window_factory.create(*window_infos))
+
+    if tmux_util.is_used():
+        atexit.register(setup_tmux_hooks())
 
     with windows:
         # this could lead to unexpected behavior,
@@ -108,10 +175,14 @@ def main_image(options):
                 sig,
                 functools.partial(asyncio.ensure_future, shutdown_routine))
 
+        loop.add_signal_handler(
+            signal.SIGUSR1,
+            lambda: asyncio.ensure_future(query_windows(window_factory, windows)))
+
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(
             loop, shutdown_routine, parser_class(),
-            window_factory, windows, media))
+            windows, media))
 
         try:
             loop.run_forever()
