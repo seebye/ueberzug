@@ -51,26 +51,28 @@ async def main_xevents(loop, display, windows):
 async def main_commands(loop, shutdown_routine, parser_object,
                         windows, media):
     """Coroutine which processes the input of stdin"""
-    async for line in aio.LineReader(loop, sys.stdin):
-        if not line:
-            asyncio.ensure_future(shutdown_routine)
-            break
+    try:
+        async for line in aio.LineReader(loop, sys.stdin):
+            if not line:
+                break
 
-        try:
-            data = parser_object.parse(line[:-1])
-            command = action.Command(data.pop('action')) #pylint: disable=E1120
-            command.action_class(windows, media) \
-                    .execute(**data)
-        except (parser.ParseError, KeyError, ValueError, TypeError) as error:
-            cause = (error.args[0]
-                     if isinstance(error, parser.ParseError)
-                     else error)
-            print(parser_object.unparse({
-                'type': 'error',
-                'name': type(cause).__name__,
-                'message': str(error),
-                #'stack': traceback.format_exc()
-            }), file=sys.stderr)
+            try:
+                data = parser_object.parse(line[:-1])
+                command = action.Command(data.pop('action')) #pylint: disable=E1120
+                command.action_class(windows, media) \
+                        .execute(**data)
+            except (parser.ParseError, KeyError, ValueError, TypeError) as error:
+                cause = (error.args[0]
+                         if isinstance(error, parser.ParseError)
+                         else error)
+                print(parser_object.unparse({
+                    'type': 'error',
+                    'name': type(cause).__name__,
+                    'message': str(error),
+                    #'stack': traceback.format_exc()
+                }), file=sys.stderr)
+    finally:
+        asyncio.ensure_future(shutdown_routine)
 
 
 async def query_windows(window_factory, windows):
