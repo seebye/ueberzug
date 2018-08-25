@@ -59,7 +59,3 @@ function ImageLayer::add {
 function ImageLayer::remove {
     ImageLayer::build_command remove "identifier" "$@"
 }
-
-function ImageLayer::query_windows {
-    ImageLayer::build_command query_windows "" "$@"
-}
