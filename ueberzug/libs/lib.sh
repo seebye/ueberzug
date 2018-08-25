@@ -29,7 +29,7 @@ function Error::raise {
 
 
 function ImageLayer {
-    python3 -m ueberzug image -p bash
+    python3 -m ueberzug layer -p bash
 }
 
 function ImageLayer::__build_command {
