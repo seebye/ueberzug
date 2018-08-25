@@ -79,7 +79,6 @@ async def query_windows(window_factory, windows):
     Added clients: additional windows will be mapped
     Removed clients: existing windows will be destroyed
     """
-    draw = False
     parent_window_infos = xutil.get_parent_window_infos()
     map_parent_window_id_info = {info.window_id: info
                                  for info in parent_window_infos}
@@ -90,16 +89,15 @@ async def query_windows(window_factory, windows):
     diff_window_ids = parent_window_ids ^ current_window_ids
     added_window_ids = diff_window_ids & parent_window_ids
     removed_window_ids = diff_window_ids & current_window_ids
+    draw = added_window_ids or removed_window_ids
 
     if added_window_ids:
-        draw = True
         windows += window_factory.create(*[
             map_parent_window_id_info.get(wid)
             for wid in added_window_ids
         ])
 
     if removed_window_ids:
-        draw = True
         windows -= [
             map_current_windows.get(wid)
             for wid in removed_window_ids
