@@ -62,7 +62,7 @@ it will be replaced.
 | height        | Integer      | desired height; original width will be used if not set             | Yes      |
 | max_width     | Integer      | image will be resized (while keeping it's aspect ratio) if it's width is bigger than max width | Yes |
 | max_height    | Integer      | image will be resized (while keeping it's aspect ratio) if it's height is bigger than max height | Yes |
-| draw          | Boolean      | redraw window after adding the image                               | Yes      |
+| draw          | Boolean      | redraw window after adding the image, default True                 | Yes      |
 
 #### Remove
 
@@ -73,7 +73,7 @@ Removes an image from the screen.
 | Key           | Type         | Description                                                        | Optional |
 |---------------|--------------|--------------------------------------------------------------------|----------|
 | identifier    | String       | a previously used identifier                                       | No       |
-| draw          | Boolean      | redraw window after removing the image                             | Yes      |
+| draw          | Boolean      | redraw window after removing the image, default True               | Yes      |
 
 
 ## Examples
