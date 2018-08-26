@@ -29,7 +29,7 @@ class Events:
         """Waits asynchronously for an x11 event and returns it"""
         return await loop.run_in_executor(None, display.next_event)
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):
@@ -38,8 +38,8 @@ class Events:
 
 class TerminalWindowInfo(terminal.TerminalInfo):
     def __init__(self, window_id, fd_pty=None):
-        super().__init__(fd_pty)
         self.window_id = window_id
+        super().__init__(window_id,fd_pty)
 
 
 async def prepare_display():
