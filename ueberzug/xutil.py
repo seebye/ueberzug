@@ -49,7 +49,7 @@ async def prepare_display():
 
 def get_display():
     """Unfortunately, Xlib tends to produce death locks
-    on request with an expected reply.
+    on requests with an expected reply.
     (e.g. Drawable#get_geometry)
     Use for each request a new display as workaround.
     """
