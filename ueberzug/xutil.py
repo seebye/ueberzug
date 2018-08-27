@@ -76,7 +76,8 @@ def get_parent_pids(pid=None):
 def get_pid_by_window_id(display: Xdisplay.Display, window_id: int):
     window = display.create_resource_object('window', window_id)
     prop = window.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
-    return prop.value[0]
+    return (prop.value[0] if prop
+            else None)
 
 
 def get_pid_window_id_map():
