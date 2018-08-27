@@ -87,7 +87,7 @@ Command formats:
 Bash library:
 
 ```bash
-source "`python3 -m ueberzug library`"
+source "`ueberzug library`"
 
 ImageLayer -< <(
     ImageLayer::add [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg"
