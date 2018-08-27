@@ -34,21 +34,25 @@ class TerminalInfo:
         return font_size, padding
 
     def __init__(self, pty=None):
+        self.pty = pty
         self.font_width = None
         self.font_height = None
         self.padding = None
 
-        if isinstance(pty, (int, type(None))):
-            self.__calculate_sizes(pty)
-        else:
-            with open(pty) as fd_pty:
-                self.__calculate_sizes(fd_pty)
-
-    def __calculate_sizes(self, fd_pty):
+    def calculate_sizes(self, fallback_width, fallback_height):
         """Calculates the values for font_{width,height} and
         padding_{horizontal,vertical}.
         """
+        if isinstance(self.pty, (int, type(None))):
+            self.__calculate_sizes(self.pty, fallback_width, fallback_height)
+        else:
+            with open(self.pty) as fd_pty:
+                self.__calculate_sizes(fd_pty, fallback_width, fallback_height)
+
+    def __calculate_sizes(self, fd_pty, fallback_width, fallback_height):
         cols, rows, xpixels, ypixels = TerminalInfo.get_size(fd_pty)
+        xpixels = xpixels or fallback_width
+        ypixels = ypixels or fallback_height
         self.font_width, padding_horizontal = \
             TerminalInfo.__get_font_size_padding(cols, xpixels)
         self.font_height, padding_vertical = \

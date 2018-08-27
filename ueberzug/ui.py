@@ -222,6 +222,8 @@ class OverlayWindow:
             parent_window = display.create_resource_object(
                 'window', self.parent_info.window_id)
             parent_size = parent_window.get_geometry()
+            self.parent_info.calculate_sizes(
+                parent_size.width, parent_size.height)
         self._width, self._height = parent_size.width, parent_size.height
         #print('parent', self.parent_window.id)
 
