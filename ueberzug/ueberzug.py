@@ -12,6 +12,7 @@ Image options:
                            simple: Key-Values separated by a tab
                            bash: associative array dumped via `declare -p`
                            [default: json]
+    -s, --silent           print stderr to /dev/null
 
 
 License:
@@ -158,6 +159,9 @@ def main_layer(options):
 
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
+
+    if options['--silent']:
+        sys.stderr = open('/dev/null', 'w')
 
     with windows:
         # this could lead to unexpected behavior,
