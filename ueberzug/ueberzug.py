@@ -59,7 +59,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
 
             try:
                 data = parser_object.parse(line[:-1])
-                command = action.Command(data.pop('action')) #pylint: disable=E1120
+                command = action.Command(data.pop('action'))  # pylint: disable=E1120
                 command.action_class(windows, media) \
                         .execute(**data)
             except (parser.ParseError, KeyError, ValueError, TypeError) as error:
