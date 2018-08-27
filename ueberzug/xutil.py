@@ -29,7 +29,7 @@ class Events:
         """Waits asynchronously for an x11 event and returns it"""
         return await loop.run_in_executor(None, display.next_event)
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):

@@ -11,7 +11,7 @@ class LineReader:
         """Waits asynchronously for a line and returns it"""
         return await loop.run_in_executor(None, file.readline)
 
-    async def __aiter__(self):
+    def __aiter__(self):
         return self
 
     async def __anext__(self):
