@@ -29,7 +29,7 @@ function Error::raise {
 
 
 function ImageLayer {
-    ueberzug layer -p bash
+    ueberzug layer -p bash "$@"
 }
 
 function ImageLayer::__build_command {
