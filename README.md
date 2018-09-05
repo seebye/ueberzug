@@ -3,7 +3,7 @@
 Überzug is a command line util
 which allows to draw images on terminals by using child windows.
 
-Advantages to w3mimagedisplay:
+Advantages to w3mimgdisplay:
 - no race conditions as a new window is created to display images
 - expose events will be processed,  
   so images will be redrawn on switch workspaces
