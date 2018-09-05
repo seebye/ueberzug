@@ -127,12 +127,9 @@ def get_parent_window_infos():
     """
     window_infos = []
     clients_pid_tty = {}
-    environ_window_id = os.environ.get('WINDOWID')
 
     if tmux_util.is_used():
         clients_pid_tty = tmux_util.get_client_ttys_by_pid()
-    elif environ_window_id is not None:
-        window_infos.append(TerminalWindowInfo(int(environ_window_id)))
     else:
         clients_pid_tty = {psutil.Process().pid: None}
 
