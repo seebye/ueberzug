@@ -1,5 +1,6 @@
 """This module contains x11 utils"""
 import os
+import sys
 import functools
 import asyncio
 
@@ -117,6 +118,19 @@ def get_first_window_id(pid_window_id_map: dict, pids: list):
         return None
 
 
+def get_first_pty(pids: list):
+    """Determines the pseudo terminal of
+    the first parent process which owns one.
+    """
+    for pid in pids:
+        pty_candidate = '/proc/{pid}/fd/1'.format(pid=pid)
+        with open(pty_candidate) as pty:
+            if os.isatty(pty.fileno()):
+                return pty_candidate
+
+    return None
+
+
 def get_parent_window_infos():
     """Determines the window id of each
     terminal which displays the program using
@@ -137,8 +151,15 @@ def get_parent_window_infos():
         pid_window_id_map = get_pid_window_id_map()
 
         for pid, pty in clients_pid_tty.items():
-            wid = get_first_window_id(pid_window_id_map,
-                                      get_parent_pids(pid))
+            ppids = get_parent_pids(pid)
+            wid = get_first_window_id(pid_window_id_map, ppids)
+
+            if pty is None and not os.isatty(sys.stdout.fileno()):
+                # note: this method won't return the desired pseudo tty
+                #       if ueberzug runs in tmux
+                #       (pty shouldn't be None in this case anyways)
+                pty = get_first_pty(ppids)
+
             if wid:
                 window_infos.append(TerminalWindowInfo(wid, pty))
 
