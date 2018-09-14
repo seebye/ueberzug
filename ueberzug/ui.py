@@ -9,6 +9,7 @@ import Xlib.protocol.event as Xevent
 import PIL.Image as Image
 
 import ueberzug.xutil as xutil
+import ueberzug.geometry as geometry
 
 
 INDEX_ALPHA_CHANNEL = 3
@@ -65,6 +66,13 @@ def get_image_and_mask(image: Image):
     return image, mask
 
 
+class View:
+    """Data class which holds meta data about the screen"""
+    def __init__(self):
+        self.offset = geometry.Distance()
+        self.media = {}
+
+
 class WindowFactory:
     """Window factory class"""
     def __init__(self, display):
@@ -82,12 +90,12 @@ class OverlayWindow:
 
     class Factory(WindowFactory):
         """OverlayWindows factory class"""
-        def __init__(self, display, media):
+        def __init__(self, display, view):
             super().__init__(display)
-            self.media = media
+            self.view = view
 
         def create(self, *window_infos: xutil.TerminalWindowInfo):
-            return [OverlayWindow(self.display, self.media, info)
+            return [OverlayWindow(self.display, self.view, info)
                     for info in window_infos]
 
     class Placement:
@@ -105,7 +113,8 @@ class OverlayWindow:
             self.image = image
             self.mask = mask
 
-        def resolve(self, term_info: xutil.TerminalWindowInfo):
+        def resolve(self, pane_offset: geometry.Distance,
+                    term_info: xutil.TerminalWindowInfo):
             """Resolves the position and size of the image
             according to the teminal window information.
 
@@ -115,9 +124,9 @@ class OverlayWindow:
             """
             # x, y are useful names in this case
             # pylint: disable=invalid-name
-            x = (self.x * term_info.font_width +
+            x = ((self.x + pane_offset.left) * term_info.font_width +
                  term_info.padding)
-            y = (self.y * term_info.font_height +
+            y = ((self.y + pane_offset.top) * term_info.font_height +
                  term_info.padding)
             width = self.width * term_info.font_width \
                     if self.width \
@@ -144,7 +153,7 @@ class OverlayWindow:
 
 
     def __init__(self, display: Xdisplay.Display,
-                 placements: dict, term_info: xutil.TerminalWindowInfo):
+                 view: View, term_info: xutil.TerminalWindowInfo):
         """Changes the foreground color of the gc object.
 
         Args:
@@ -158,7 +167,7 @@ class OverlayWindow:
         self.parent_window = None
         self.window = None
         self._window_gc = None
-        self._placements = placements
+        self._view = view
         self._width = 1
         self._height = 1
         self.create()
@@ -187,10 +196,11 @@ class OverlayWindow:
             mask_gc.change(foreground=COLOR_INVISIBLE)
             mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
 
-            for placement in self._placements.values():
+            for placement in self._view.media.values():
                 # x, y are useful names in this case
                 # pylint: disable=invalid-name
-                x, y, width, height, image = placement.resolve(self.parent_info)
+                x, y, width, height, image = \
+                        placement.resolve(self._view.offset, self.parent_info)
 
                 mask_gc.change(foreground=COLOR_VISIBLE)
                 mask.fill_rectangle(mask_gc, x, y, width, height)

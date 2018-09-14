@@ -2,6 +2,8 @@ import subprocess
 import shlex
 import os
 
+import ueberzug.geometry as geometry
+
 
 def is_used():
     """Determines whether this program runs in tmux or not."""
@@ -14,6 +16,24 @@ def get_pane():
         str or None
     """
     return os.environ.get('TMUX_PANE')
+
+
+def get_offset():
+    """Determines the offset
+    of the pane (this process runs in)
+    within it's tmux window.
+    """
+    result = subprocess.check_output([
+        'tmux', 'display', '-p',
+        '-F', '#{pane_top},#{pane_left},'
+              '#{pane_bottom},#{pane_right},'
+              '#{window_height},#{window_width}',
+        '-t', get_pane()
+    ]).decode()
+    top, left, bottom, right, height, width = \
+        (int(i) for i in result.split(','))
+    return geometry.Distance(
+        top, left, height - bottom, width - right)
 
 
 def is_window_focused():

@@ -10,9 +10,9 @@ import ueberzug.xutil as xutil
 
 
 class Executable:
-    def __init__(self, windows, media):
+    def __init__(self, windows, view):
         self.windows = windows
-        self.media = media
+        self.view = view
 
     @abc.abstractmethod
     def execute(self, **kwargs):
@@ -39,7 +39,7 @@ class AddImageAction(Executable):
         max_width = int(max_width) if max_width else None
         max_height = int(max_height) if max_height else None
         image_rgb, mask = ui.get_image_and_mask(image)
-        self.media[identifier] = ui.OverlayWindow.Placement(
+        self.view.media[identifier] = ui.OverlayWindow.Placement(
             x, y, width, height, max_width, max_height,
             image_rgb, mask)
 
@@ -53,8 +53,8 @@ class RemoveImageAction(Executable):
         draw = (draw if isinstance(draw, bool)
                 else distutils.util.strtobool(draw or 'True'))
 
-        if identifier in self.media:
-            del self.media[identifier]
+        if identifier in self.view.media:
+            del self.view.media[identifier]
 
             if draw and self.windows:
                 self.windows.draw()

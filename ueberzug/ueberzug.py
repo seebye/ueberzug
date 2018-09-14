@@ -50,7 +50,7 @@ async def main_xevents(loop, display, windows):
 
 
 async def main_commands(loop, shutdown_routine, parser_object,
-                        windows, media):
+                        windows, view):
     """Coroutine which processes the input of stdin"""
     try:
         async for line in aio.LineReader(loop, sys.stdin):
@@ -60,7 +60,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
             try:
                 data = parser_object.parse(line[:-1])
                 command = action.Command(data.pop('action'))  # pylint: disable=E1120
-                command.action_class(windows, media) \
+                command.action_class(windows, view) \
                         .execute(**data)
             except (parser.ParseError, KeyError, ValueError, TypeError) as error:
                 cause = (error.args[0]
@@ -76,13 +76,14 @@ async def main_commands(loop, shutdown_routine, parser_object,
         asyncio.ensure_future(shutdown_routine)
 
 
-async def query_windows(window_factory, windows):
+async def query_windows(window_factory, windows, view):
     """Signal handler for SIGUSR1.
     Searches for added and removed tmux clients.
     Added clients: additional windows will be mapped
     Removed clients: existing windows will be destroyed
     """
     parent_window_infos = xutil.get_parent_window_infos()
+    view.offset = tmux_util.get_offset()
     map_parent_window_id_info = {info.window_id: info
                                  for info in parent_window_infos}
     parent_window_ids = map_parent_window_id_info.keys()
@@ -147,18 +148,21 @@ def setup_tmux_hooks():
 
 
 def main_layer(options):
+    # TODO add a coroutine which sends SIGUSR1 to every subprocess
+    # TODO of the tmux windows panes with a window
     display = xutil.get_display()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = futures.ThreadPoolExecutor(max_workers=2)
     shutdown_routine = shutdown(loop) #pylint: disable=E1111
     parser_class = parser.ParserOption(options['--parser']).parser_class
-    media = {}
-    window_factory = ui.OverlayWindow.Factory(display, media)
+    view = ui.View()
+    window_factory = ui.OverlayWindow.Factory(display, view)
     windows = batch.BatchList(window_factory.create(*window_infos))
 
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
+        view.offset = tmux_util.get_offset()
 
     if options['--silent']:
         sys.stderr = open('/dev/null', 'w')
@@ -181,12 +185,13 @@ def main_layer(options):
 
         loop.add_signal_handler(
             signal.SIGUSR1,
-            lambda: asyncio.ensure_future(query_windows(window_factory, windows)))
+            lambda: asyncio.ensure_future(query_windows(
+                window_factory, windows, view)))
 
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(
             loop, shutdown_routine, parser_class(),
-            windows, media))
+            windows, view))
 
         try:
             loop.run_forever()

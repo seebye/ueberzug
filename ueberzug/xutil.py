@@ -55,6 +55,7 @@ def get_display():
     Use for each request a new display as workaround.
     """
     for i in range(len(PREPARED_DISPLAYS) - 1, DISPLAY_SUPPLIES):
+        # TODO subtract the already scheduled display creations
         asyncio.ensure_future(prepare_display())
     if not PREPARED_DISPLAYS:
         return Xdisplay.Display()
