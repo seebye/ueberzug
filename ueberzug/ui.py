@@ -137,7 +137,8 @@ class OverlayWindow:
                 width = width * max_height / height
                 height = max_height
 
-            image = self.image.resize((int(width), int(height)))
+            image = self.image.resize((int(width), int(height)),
+                                      Image.ANTIALIAS)
 
             return int(x), int(y), int(width), int(height), image
 
