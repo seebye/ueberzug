@@ -7,6 +7,8 @@ import Xlib.display as Xdisplay
 import Xlib.ext.shape as Xshape
 import Xlib.protocol.event as Xevent
 import PIL.Image as Image
+import PIL.ImageDraw as ImageDraw
+import PIL.ImageFont as ImageFont
 
 import ueberzug.xutil as xutil
 import ueberzug.geometry as geometry
@@ -64,6 +66,17 @@ def get_image_and_mask(image: Image):
         image = image_rgb
 
     return image, mask
+
+
+def add_overlay_text(image: Image, x: int, y: int, text: str,
+                     foreground=(255, 255, 255),
+                     background=(0, 0, 0)):
+    """Draws a text over an image."""
+    default_font = ImageFont.load_default()
+    width, height = default_font.getsize(text)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle(((x, y), (x + width, y + height)), background)
+    draw.text((x, y), text, foreground, default_font)
 
 
 class View:
@@ -204,6 +217,9 @@ class OverlayWindow:
 
                 mask_gc.change(foreground=COLOR_VISIBLE)
                 mask.fill_rectangle(mask_gc, x, y, width, height)
+
+                if not self._view.offset.left == self._view.offset.top == 0:
+                    add_overlay_text(image, 0, 0, "Multi pane windows aren't supported")
 
                 self.window.put_pil_image(
                     self._window_gc, x, y, image)
