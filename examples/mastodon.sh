@@ -139,7 +139,7 @@ function Screen::select_host {
 function Screen::display_media {
     local -a urls=( "$@" )
 
-    ImageLayer -< <(
+    ImageLayer 0< <(
         function cleanup {
             if [[ "$tmpfolder" == "/tmp/"* ]]; then
                 rm "${tmpfolder}/"*
