@@ -20,7 +20,7 @@ class TerminalInfo:
         return cols, rows, xpixels, ypixels
 
     @staticmethod
-    def __get_font_size_padding(chars, pixels):
+    def __guess_padding(chars, pixels):
         # (this won't work all the time but
         # it's still better than disrespecting padding all the time)
         # let's assume the padding is the same on both sides:
@@ -31,7 +31,11 @@ class TerminalInfo:
         # <=> padding = - font_width * cols + xpixels
         font_size = math.floor(pixels / chars)
         padding = (- font_size * chars + pixels) / 2
-        return font_size, padding
+        return padding
+
+    @staticmethod
+    def __guess_font_size(chars, pixels, padding):
+        return (pixels - 2 * padding) / chars
 
     def __init__(self, pty=None):
         self.pty = pty
@@ -53,8 +57,8 @@ class TerminalInfo:
         cols, rows, xpixels, ypixels = TerminalInfo.get_size(fd_pty)
         xpixels = xpixels or fallback_width
         ypixels = ypixels or fallback_height
-        self.font_width, padding_horizontal = \
-            TerminalInfo.__get_font_size_padding(cols, xpixels)
-        self.font_height, padding_vertical = \
-            TerminalInfo.__get_font_size_padding(rows, ypixels)
+        padding_horizontal = self.__guess_padding(cols, xpixels)
+        padding_vertical = self.__guess_padding(rows, ypixels)
         self.padding = max(padding_horizontal, padding_vertical)
+        self.font_width = self.__guess_font_size(cols, xpixels, self.padding)
+        self.font_height = self.__guess_font_size(rows, ypixels, self.padding)
