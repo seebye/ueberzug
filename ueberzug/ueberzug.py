@@ -62,7 +62,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
                 command = action.Command(data.pop('action'))  # pylint: disable=E1120
                 command.action_class(windows, view) \
                         .execute(**data)
-            except (parser.ParseError, KeyError, ValueError, TypeError) as error:
+            except (parser.ParseError, OSError, KeyError, ValueError, TypeError) as error:
                 cause = (error.args[0]
                          if isinstance(error, parser.ParseError)
                          else error)
