@@ -80,9 +80,9 @@ Removes an image from the screen.
 
 Command formats:
 
-- Json add command: `{"action": "add", "x": 0, "y": 0, "path": "/some/path/some_image.jpg"}`  
-- Simple add command: `action add x   0   y   0   path    /some/path/some_image.jpg`  
-- Bash add command: `declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )`  
+- Json command format: `{"action": "add", "x": 0, "y": 0, "path": "/some/path/some_image.jpg"}`  
+- Simple command format: `action add x   0   y   0   path    /some/path/some_image.jpg`  
+- Bash command format: `declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )`  
 
 Bash library:
 
@@ -111,3 +111,4 @@ ImageLayer 0< <(
 Scripts:
 
 - Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
+- **F**zf **M**pd **U**ser **I**nterface: https://github.com/seebye/fmui
