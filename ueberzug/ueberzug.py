@@ -29,7 +29,6 @@ import signal
 import functools
 import concurrent.futures as futures
 import pathlib
-import traceback
 
 import docopt
 
@@ -70,7 +69,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
                     'type': 'error',
                     'name': type(cause).__name__,
                     'message': str(error),
-                    #'stack': traceback.format_exc()
+                    # 'stack': traceback.format_exc()
                 }), file=sys.stderr)
     finally:
         asyncio.ensure_future(shutdown_routine)
@@ -207,7 +206,7 @@ def main_library():
 
 def main():
     options = docopt.docopt(__doc__)
-    routine = options['ROUTINE'] 
+    routine = options['ROUTINE']
 
     if routine == 'layer':
         main_layer(options)
