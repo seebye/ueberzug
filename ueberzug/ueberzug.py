@@ -27,11 +27,11 @@ import os
 import asyncio
 import signal
 import functools
-import concurrent.futures as futures
 import pathlib
 
 import docopt
 
+import ueberzug.thread as thread
 import ueberzug.aio as aio
 import ueberzug.xutil as xutil
 import ueberzug.parser as parser
@@ -147,13 +147,11 @@ def setup_tmux_hooks():
 
 
 def main_layer(options):
-    # TODO add a coroutine which sends SIGUSR1 to every subprocess
-    # TODO of the tmux windows panes with a window
     display = xutil.get_display()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
-    executor = futures.ThreadPoolExecutor(max_workers=2)
-    shutdown_routine = shutdown(loop) #pylint: disable=E1111
+    executor = thread.DaemonThreadPoolExecutor(max_workers=2)
+    shutdown_routine = shutdown(loop)  # pylint: disable=E1111
     parser_class = parser.ParserOption(options['--parser']).parser_class
     view = ui.View()
     window_factory = ui.OverlayWindow.Factory(display, view)
@@ -167,14 +165,6 @@ def main_layer(options):
         sys.stderr = open('/dev/null', 'w')
 
     with windows:
-        # this could lead to unexpected behavior,
-        # but hey otherwise it breaks exiting the script..
-        # as readline for example won't return till a line was read
-        # and there's no (already integrated) way to
-        # disable it only for a specific threadpoolexecutor
-        # see: https://github.com/python/cpython/blob/master/Lib/concurrent/futures/thread.py#L33
-        # -> TODO: reimplement ThreadPoolExecutor
-        atexit.unregister(futures.thread._python_exit) #pylint: disable=W0212
         loop.set_default_executor(executor)
 
         for sig in (signal.SIGINT, signal.SIGTERM):
