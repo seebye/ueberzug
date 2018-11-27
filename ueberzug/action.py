@@ -1,63 +1,71 @@
 import abc
 import enum
-import distutils.util
+import attr
 
 import PIL.Image as Image
 
-import ueberzug.batch as batch
 import ueberzug.ui as ui
-import ueberzug.xutil as xutil
+import ueberzug.conversion as conversion
 
 
-class Executable:
-    def __init__(self, windows, view):
-        self.windows = windows
-        self.view = view
+@attr.s
+class Action(metaclass=abc.ABCMeta):
+    action = attr.ib(type=str)
 
     @abc.abstractmethod
-    def execute(self, **kwargs):
-        """Executes the action"""
+    def apply(self, windows, view):
+        """Executes the action on  the passed view and windows."""
         raise NotImplementedError()
 
 
-class AddImageAction(Executable):
+@attr.s
+class DrawAction(Action, metaclass=abc.ABCMeta):
+    # pylint: disable=abstract-method
+    draw = attr.ib(default=True, converter=conversion.to_bool)
+
+
+@attr.s
+class ImageAction(DrawAction, metaclass=abc.ABCMeta):
+    # pylint: disable=abstract-method
+    identifier = attr.ib(default=True)
+
+
+@attr.s(kw_only=True)
+class AddImageAction(ImageAction):
     """Displays the image according to the passed option.
     If there's already an image with the given identifier
     it's going to be replaced.
     """
-    def execute(self, identifier, x, y, path, #pylint: disable=W0221,R0913
-                width=None, height=None,
-                max_width=None, max_height=None,
-                draw=None):
-        draw = (draw if isinstance(draw, bool)
-                else distutils.util.strtobool(draw or 'True'))
-        image = Image.open(path)
-        x = int(x)
-        y = int(y)
-        width = int(width) if width else None
-        height = int(height) if height else None
-        max_width = int(max_width) if max_width else None
-        max_height = int(max_height) if max_height else None
+    x = attr.ib(converter=int)
+    y = attr.ib(converter=int)
+    path = attr.ib(type=str)
+    width = attr.ib(converter=int, default=0)
+    max_width = attr.ib(converter=int, default=0)
+    height = attr.ib(converter=int, default=0)
+    max_height = attr.ib(converter=int, default=0)
+
+    def apply(self, windows, view):
+        image = Image.open(self.path)
         image_rgb, mask = ui.get_image_and_mask(image)
-        self.view.media[identifier] = ui.OverlayWindow.Placement(
-            x, y, width, height, max_width, max_height,
+        view.media[self.identifier] = ui.OverlayWindow.Placement(
+            self.x, self.y,
+            self.width, self.height,
+            self.max_width, self.max_height,
             image_rgb, mask)
 
-        if draw and self.windows:
-            self.windows.draw()
+        if self.draw and windows:
+            windows.draw()
 
 
-class RemoveImageAction(Executable):
+@attr.s(kw_only=True)
+class RemoveImageAction(ImageAction):
     """Removes the image with the passed identifier."""
-    def execute(self, identifier, draw=None): #pylint: disable=W0221
-        draw = (draw if isinstance(draw, bool)
-                else distutils.util.strtobool(draw or 'True'))
+    def apply(self, windows, view):
+        if self.identifier in view.media:
+            del view.media[self.identifier]
 
-        if identifier in self.view.media:
-            del self.view.media[identifier]
-
-            if draw and self.windows:
-                self.windows.draw()
+            if self.draw and windows:
+                windows.draw()
 
 
 @enum.unique
