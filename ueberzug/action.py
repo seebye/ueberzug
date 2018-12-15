@@ -10,7 +10,14 @@ import ueberzug.conversion as conversion
 
 @attr.s
 class Action(metaclass=abc.ABCMeta):
-    action = attr.ib(type=str)
+    action = attr.ib(type=str, default=attr.Factory(
+        lambda self: self.get_action_name(), takes_self=True))
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_action_name():
+        """Returns the constant name which is associated to this action."""
+        raise NotImplementedError()
 
     @abc.abstractmethod
     def apply(self, windows, view):
@@ -18,16 +25,35 @@ class Action(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
-@attr.s
-class DrawAction(Action, metaclass=abc.ABCMeta):
-    # pylint: disable=abstract-method
+@attr.s(kw_only=True)
+class Drawable:
+    """Defines the attributes of drawable actions."""
     draw = attr.ib(default=True, converter=conversion.to_bool)
 
 
-@attr.s
-class ImageAction(DrawAction, metaclass=abc.ABCMeta):
+@attr.s(kw_only=True)
+class Identifiable:
+    """Defines the attributes of actions
+    which are associated to an identifier.
+    """
+    identifier = attr.ib(type=str)
+
+
+@attr.s(kw_only=True)
+class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
+    """Defines actions which redraws all windows."""
     # pylint: disable=abstract-method
-    identifier = attr.ib(default=True)
+
+    def apply(self, windows, view):
+        if self.draw and windows:
+            windows.draw()
+
+
+@attr.s(kw_only=True)
+class ImageAction(DrawAction, Identifiable, metaclass=abc.ABCMeta):
+    """Defines actions which are related to images."""
+    # pylint: disable=abstract-method
+    pass
 
 
 @attr.s(kw_only=True)
@@ -36,13 +62,17 @@ class AddImageAction(ImageAction):
     If there's already an image with the given identifier
     it's going to be replaced.
     """
-    x = attr.ib(converter=int)
-    y = attr.ib(converter=int)
+    x = attr.ib(type=int, converter=int)
+    y = attr.ib(type=int, converter=int)
     path = attr.ib(type=str)
-    width = attr.ib(converter=int, default=0)
-    max_width = attr.ib(converter=int, default=0)
-    height = attr.ib(converter=int, default=0)
-    max_height = attr.ib(converter=int, default=0)
+    width = attr.ib(type=int, converter=int, default=0)
+    max_width = attr.ib(type=int, converter=int, default=0)
+    height = attr.ib(type=int, converter=int, default=0)
+    max_height = attr.ib(type=int, converter=int, default=0)
+
+    @staticmethod
+    def get_action_name():
+        return 'add'
 
     def apply(self, windows, view):
         image = Image.open(self.path)
@@ -53,25 +83,28 @@ class AddImageAction(ImageAction):
             self.max_width, self.max_height,
             image_rgb, mask)
 
-        if self.draw and windows:
-            windows.draw()
+        super().apply(windows, view)
 
 
 @attr.s(kw_only=True)
 class RemoveImageAction(ImageAction):
     """Removes the image with the passed identifier."""
+
+    @staticmethod
+    def get_action_name():
+        return 'remove'
+
     def apply(self, windows, view):
         if self.identifier in view.media:
             del view.media[self.identifier]
 
-            if self.draw and windows:
-                windows.draw()
+            super().apply(windows, view)
 
 
 @enum.unique
 class Command(str, enum.Enum):
-    ADD = 'add', AddImageAction
-    REMOVE = 'remove', RemoveImageAction
+    ADD = AddImageAction.get_action_name(), AddImageAction
+    REMOVE = RemoveImageAction.get_action_name(), RemoveImageAction
 
     def __new__(cls, identifier, action_class):
         inst = str.__new__(cls)
