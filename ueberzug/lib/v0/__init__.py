@@ -21,13 +21,13 @@ class Placement(object):
     __DEFAULT_VALUES = {str: '', int: 0}
     __ATTRIBUTES = {attribute.name: attribute
                     for attribute in attr.fields(_action.AddImageAction)}
-    __EMPTY_BASE_PAIRS = \
-        (lambda attributes, default_values:
-         {attribute.name: default_values[attribute.type]
-          for attribute in attributes.values()
-          if (attribute.default == attr.NOTHING and
-              attribute.init)})\
-        (__ATTRIBUTES, __DEFAULT_VALUES)
+    __EMPTY_BASE_PAIRS = (
+        lambda attributes, default_values:
+        {attribute.name: default_values[attribute.type]
+         for attribute in attributes.values()
+         if (attribute.default == attr.NOTHING
+             and attribute.init)}
+        )(__ATTRIBUTES, __DEFAULT_VALUES)
 
     def __init__(self, canvas, identifier,
                  visibility: Visibility = Visibility.INVISIBLE,
