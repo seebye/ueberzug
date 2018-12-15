@@ -103,11 +103,11 @@ class RemoveImageAction(ImageAction):
 
 @enum.unique
 class Command(str, enum.Enum):
-    ADD = AddImageAction.get_action_name(), AddImageAction
-    REMOVE = RemoveImageAction.get_action_name(), RemoveImageAction
+    ADD = AddImageAction
+    REMOVE = RemoveImageAction
 
-    def __new__(cls, identifier, action_class):
+    def __new__(cls, action_class):
         inst = str.__new__(cls)
-        inst._value_ = identifier
+        inst._value_ = action_class.get_action_name()
         inst.action_class = action_class
         return inst
