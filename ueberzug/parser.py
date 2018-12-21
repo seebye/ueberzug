@@ -7,8 +7,6 @@ import shlex
 import itertools
 import enum
 
-class ParseError(Exception):
-    pass
 
 class Parser:
     """Subclasses of this abstract class define
@@ -48,11 +46,11 @@ class JsonParser(Parser):
         try:
             data = json.loads(line)
             if not isinstance(data, dict):
-                raise ParseError(ValueError(
-                    'Expected to parse an json object, got ' + line))
+                raise ValueError(
+                    'Expected to parse an json object, got ' + line)
             return data
         except json.JSONDecodeError as error:
-            raise ParseError(error)
+            raise ValueError(error)
 
     def unparse(self, data):
         return json.dumps(data)
@@ -68,10 +66,10 @@ class SimpleParser(Parser):
         components = line.split(SimpleParser.SEPARATOR)
 
         if len(components) % 2 != 0:
-            raise ParseError(ValueError(
+            raise ValueError(
                 'Expected key value pairs, ' +
                 'but at least one key has no value: ' +
-                line))
+                line)
 
         return {
             key: value
@@ -94,10 +92,10 @@ class BashParser(Parser):
         end = line.rfind(')')
 
         if not 0 <= start < end:
-            raise ParseError(ValueError(
+            raise ValueError(
                 "Expected input to be formatted like "
                 "the output of bashs `declare -p` function. "
-                "Got: " + line))
+                "Got: " + line)
 
         components = itertools.dropwhile(
             lambda text: not text or text[0] != '[',
