@@ -232,10 +232,9 @@ class LazyCommandTransmitter(CommandTransmitter):
 
 
 class Canvas:
-    def __init__(self, autorestart=True, debug=False):
+    def __init__(self, debug=False):
         self.__process = UeberzugProcess([] if debug else ['--silent'])
         self.__transmitter = DequeCommandTransmitter(self.__process)
-        self.autorestart = autorestart
         self.__used_identifiers = set()
 
     def create_placement(self, identifier, *args, **kwargs):
@@ -270,8 +269,6 @@ class Canvas:
 
     def enqueue(self, command: _action.Action):
         if not self.__process.responsive:
-            if not self.autorestart:
-                return
             self.__process.start()
 
         self.__transmitter.enqueue(command)
