@@ -12,11 +12,12 @@ import ueberzug.action as _action
 
 
 class Visibility(enum.Enum):
+    """Enum which defines the different visibility states."""
     VISIBLE = enum.auto()
     INVISIBLE = enum.auto()
 
 
-class Placement(object):
+class Placement:
     __initialised = False
     __DEFAULT_VALUES = {str: '', int: 0}
     __ATTRIBUTES = {attribute.name: attribute
