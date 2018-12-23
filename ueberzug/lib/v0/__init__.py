@@ -195,8 +195,8 @@ class DequeCommandTransmitter(CommandTransmitter):
         super().__init__(process)
         self.__queue_commands = collections.deque()
 
-    def enqueue(self, command: _action.Action):
-        self.__queue_commands.append(command)
+    def enqueue(self, action: _action.Action):
+        self.__queue_commands.append(action)
 
     def transmit(self):
         while self.__queue_commands:
