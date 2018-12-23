@@ -18,7 +18,7 @@ class Visibility(enum.Enum):
 
 
 class Placement:
-    """The class which represent a placement on the canvas.
+    """The class which represent a (image) placement on the canvas.
 
     Attributes:
         Every parameter defined by the add action is an attribute.
