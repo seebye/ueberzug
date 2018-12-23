@@ -191,6 +191,8 @@ class CommandTransmitter:
 
 
 class DequeCommandTransmitter(CommandTransmitter):
+    """Implements the command transmitter with a dequeue."""
+
     def __init__(self, process):
         super().__init__(process)
         self.__queue_commands = collections.deque()
