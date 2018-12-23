@@ -209,12 +209,19 @@ class DequeCommandTransmitter(CommandTransmitter):
         self._process.stdin.flush()
 
 
-class LazyDequeCommandTransmitter(DequeCommandTransmitter):
+class LazyCommandTransmitter(CommandTransmitter):
+    def __init__(self, transmitter):
+        super().__init__(None)
+        self.transmitter = transmitter
+
+    def enqueue(self, action: _action.Action):
+        self.transmitter.enqueue(action)
+
     def transmit(self):
         pass
 
     def force_transmit(self):
-        super().transmit()
+        self.transmitter.transmit()
 
 
 class Canvas:
@@ -235,11 +242,11 @@ class Canvas:
     def lazy_drawing(self):
         try:
             self.__transmitter.transmit()
-            self.__transmitter = LazyDequeCommandTransmitter(self.__process)
+            self.__transmitter = LazyCommandTransmitter(self.__transmitter)
             yield
             self.__transmitter.force_transmit()
         finally:
-            self.__transmitter = DequeCommandTransmitter(self.__process)
+            self.__transmitter = self.__transmitter.transmitter
 
     def __call__(self, function):
         def decorator(*args, **kwargs):
