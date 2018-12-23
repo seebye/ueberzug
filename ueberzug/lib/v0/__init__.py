@@ -212,6 +212,10 @@ class DequeCommandTransmitter(CommandTransmitter):
 
 
 class LazyCommandTransmitter(CommandTransmitter):
+    """Implements lazily transmitting commands as decorator class.
+
+    Ignores calls of the transmit method.
+    """
     def __init__(self, transmitter):
         super().__init__(None)
         self.transmitter = transmitter
@@ -223,6 +227,7 @@ class LazyCommandTransmitter(CommandTransmitter):
         pass
 
     def force_transmit(self):
+        """Executes the transmit method of the decorated CommandTransmitter."""
         self.transmitter.transmit()
 
 
