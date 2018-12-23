@@ -166,15 +166,27 @@ class UeberzugProcess:
 
 
 class CommandTransmitter:
+    """Describes the structure used to define command transmitter classes.
+
+    Defines a general interface used to implement different ways
+    of storing and transmitting commands to ueberzug processes.
+    """
+
     def __init__(self, process):
         self._process = process
 
     @abc.abstractmethod
     def enqueue(self, action: _action.Action):
+        """Enqueues a command.
+
+        Args:
+            action (action.Action): the command which should be executed
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def transmit(self):
+        """Transmits every command in the queue."""
         raise NotImplementedError()
 
 
