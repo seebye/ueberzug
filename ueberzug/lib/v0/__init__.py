@@ -18,6 +18,12 @@ class Visibility(enum.Enum):
 
 
 class Placement:
+    """The class which represent a placement on the canvas.
+
+    Attributes:
+        Every parameter defined by the add action is an attribute.
+    """
+
     __initialised = False
     __DEFAULT_VALUES = {str: '', int: 0}
     __ATTRIBUTES = {attribute.name: attribute
@@ -33,6 +39,15 @@ class Placement:
     def __init__(self, canvas, identifier,
                  visibility: Visibility = Visibility.INVISIBLE,
                  **kwargs):
+        """
+        Args:
+            canvas (Canvas): the canvas this placement belongs to
+            identifier (str): a string which uniquely identifies this placement
+            visibility (Visibility): the initial visibility of this placement
+                                     (all required parameters need to be set
+                                     if it's visible)
+            kwargs: parameters of the add action
+        """
         self.__canvas = canvas
         self.__identifier = identifier
         self.__visibility = False
@@ -44,14 +59,17 @@ class Placement:
 
     @property
     def canvas(self):
+        """Canvas: the canvas this placement belongs to"""
         return self.__canvas
 
     @property
     def identifier(self):
+        """str: the identifier of this placement"""
         return self.__identifier
 
     @property
     def visibility(self):
+        """Visibility: the visibility of this placement"""
         return self.__visibility
 
     @visibility.setter
