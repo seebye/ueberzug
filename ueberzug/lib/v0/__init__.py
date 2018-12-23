@@ -118,27 +118,40 @@ class Placement:
 
 
 class UeberzugProcess:
+    """Class which handles the creation and
+    destructions of ueberzug processes.
+    """
     __KILL_TIMEOUT_SECONDS = 1
     __BUFFER_SIZE_BYTES = 50 * 1024
 
     def __init__(self, options):
+        """
+        Args:
+            options (list of str): additional command line arguments
+        """
         self.__start_options = options
         self.__process = None
 
     @property
     def stdin(self):
+        """_io.TextIOWrapper: stdin of the ueberzug process"""
         return self.__process.stdin
 
     @property
     def running(self):
+        """bool: ueberzug process is still running"""
         return (self.__process is not None
                 and self.__process.poll() is None)
 
     @property
     def responsive(self):
+        """bool: ueberzug process is able to receive instructions"""
         return self.running and not self.__process.stdin.closed
 
     def start(self):
+        """Starts a new ueberzug process
+        if there's none or it's not responsive.
+        """
         if self.responsive:
             return
         if self.running:
@@ -151,6 +164,11 @@ class UeberzugProcess:
             universal_newlines=True)
 
     def stop(self):
+        """Sends SIGTERM to the running ueberzug process
+        and waits for it to exit.
+        If the process won't end after a specific timeout
+        SIGKILL will also be send.
+        """
         if self.running:
             timer_kill = threading.Timer(
                 self.__KILL_TIMEOUT_SECONDS,
