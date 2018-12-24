@@ -273,12 +273,19 @@ class LazyCommandTransmitter(CommandTransmitter):
 
 
 class Canvas:
+    """The class which represents the drawing area."""
+
     def __init__(self, debug=False):
         self.__process = UeberzugProcess([] if debug else ['--silent'])
         self.__transmitter = DequeCommandTransmitter(self.__process)
         self.__used_identifiers = set()
 
     def create_placement(self, identifier, *args, **kwargs):
+        """Creates a placement associated with this canvas.
+
+        Args:
+            the same as the constructor of Placement
+        """
         if identifier in self.__used_identifiers:
             raise ValueError("Identifier '%s' is already taken." % identifier)
         self.__used_identifiers.add(identifier)
@@ -287,6 +294,14 @@ class Canvas:
     @property
     @contextlib.contextmanager
     def lazy_drawing(self):
+        """Context manager factory function which
+        prevents transmitting commands till the with-statement ends.
+
+        Raises:
+            IOError: on transmitting commands
+                     if stdin of the ueberzug process was closed
+                     during an attempt of writing to it.
+        """
         try:
             self.__transmitter.transmit()
             self.__transmitter = LazyCommandTransmitter(self.__transmitter)
@@ -309,12 +324,18 @@ class Canvas:
         self.__process.stop()
 
     def enqueue(self, command: _action.Action):
+        """Enqueues a command.
+
+        Args:
+            action (action.Action): the command which should be executed
+        """
         if not self.__process.responsive:
             self.__process.start()
 
         self.__transmitter.enqueue(command)
 
     def request_transmission(self):
+        """Requests the transmission of every command in the queue."""
         if not self.__process.responsive:
             return
 
