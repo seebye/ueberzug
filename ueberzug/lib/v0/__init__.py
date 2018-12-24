@@ -337,6 +337,6 @@ class Canvas:
     def request_transmission(self):
         """Requests the transmission of every command in the queue."""
         if not self.__process.responsive:
-            return
+            self.__process.start()
 
         self.__transmitter.transmit()
