@@ -22,6 +22,11 @@ class Placement:
 
     Attributes:
         Every parameter defined by the add action is an attribute.
+
+    Raises:
+        IOError: on assign a new value to an attribute
+                 if stdin of the ueberzug process was closed
+                 during an attempt of writing to it.
     """
 
     __initialised = False
