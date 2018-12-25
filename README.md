@@ -142,7 +142,7 @@ import ueberzug.lib.v0 as ueberzug
    | visibility    | Visibility   | Yes    | the visibility state of this placement<br>- setting it to VISIBLE leads to the transmission of an add command<br>- setting it to INVISIBLE leads to the transmission of a remove command |
    
    **Warning**:  
-   The transmission of a command can lead to a IOError.  
+   The transmission of a command can lead to an IOError.  
    (A transmission happens on assign a new value to an attribute of a visible Placement.  
    The transmission is delayed till leaving a with-statement if lazy_drawing is used.)
 3. Canvas:  
