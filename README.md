@@ -20,7 +20,10 @@ Advantages to w3mimgdisplay:
   * [Actions](#actions)
     + [Add](#add)
     + [Remove](#remove)
-- [Examples](#examples)
+  * [Libraries](#libraries)
+    + [Bash](#bash)
+    + [Python](#python)
+  * [Examples](#examples)
 
 ## Installation
 
@@ -76,7 +79,99 @@ Removes an image from the screen.
 | draw          | Boolean      | redraw window after removing the image, default True               | Yes      |
 
 
-## Examples
+### Libraries
+
+#### Bash
+
+First of all the library doesn't follow the posix standard,  
+so you can't use it in any other shell than bash.  
+
+Executing `ueberzug library` will print the path to the library to stdout.  
+```bash
+source "`ueberzug library`"
+```
+
+**Functions**:
+
+- `ImageLayer` starts the ueberzug process and uses bashs associative arrays to transfer commands.  
+- Also there will be a function named `ImageLayer::{action_name}` declared for each action.  
+  Each of this function takes the key values pairs of the respective action as arguments.  
+  Every argument of these functions accepts associative key value pairs only.  
+  `ImageLayer::{action_name} [{key0}]="{value0}" [{key1}]="{value1}" ...`  
+  Executing such a function builds the desired command string according to the passed arguments and prints it to stdout.  
+
+#### Python
+
+First of all everything which isn't mentioned here isn't safe to use and  
+won't necessarily shipped with new coming versions.  
+
+The library is included in ueberzug's package.  
+```python
+import ueberzug.lib.v0 as ueberzug
+```
+
+**Classes**:
+
+1. Visibility:  
+   An enum which contains the visibility states of a placement.  
+   
+   - VISIBLE
+   - INVISIBLE
+2. Placement:  
+   A placement to put images on.  
+   
+   Every key value pair of the add action is an attribute (except identifier).  
+   Changing one of it will lead to building and transmitting an add command *if the placement is visible*.  
+   The identifier key value pair is implemented as a property and not changeable.  
+   
+   Constructor:  
+   
+   | Name          | Type         | Optional | Description                                    |
+   |---------------|--------------|----------|------------------------------------------------|
+   | canvas        | Canvas       | No       | the canvas where images should be drawn on     |
+   | identifier    | String       | No       | a unique string used to address this placement |
+   | visibility    | Visibility   | Yes      | the initial visibility state<br>(if it's VISIBLE every attribute without a default value needs to be set) |
+   | \*\*kwargs    | dict         | Yes      | key value pairs of the add action              |
+   
+   Properties:  
+   
+   | Name          | Type         | Setter | Description                          |
+   |---------------|--------------|--------|--------------------------------------|
+   | identifier    | String       | No     | the identifier of this placement     |
+   | canvas        | Canvas       | No     | the canvas this placement belongs to |
+   | visibility    | Visibility   | Yes    | the visibility state of this placement<br>- setting it to VISIBLE leads to the transmission of an add command<br>- setting it to INVISIBLE leads to the transmission of a remove command |
+   
+   **Warning**:  
+   The transmission of a command can lead to a IOError.  
+   (A transmission happens on assign a new value to an attribute of a visible Placement.  
+   The transmission is delayed till leaving a with-statement if lazy_drawing is used.)
+3. Canvas:  
+   Should either be used with a with-statement or with a decorated function.  
+   (Starts and stops the ueberzug process)
+
+   Constructor:  
+   
+   | Name          | Type         | default  | Description                                    |
+   |---------------|--------------|----------|------------------------------------------------|
+   | debug         | bool         | False    | suppresses printing stderr if it's false       |
+   
+   Methods:  
+   
+   | Name             | Returns      | Description                          |
+   |------------------|--------------|--------------------------------------|
+   | create_placement | Placement    | prevents the use of the same identifier multiple times,<br>takes the same arguments as the Placement constructor (excluding canvas parameter) |
+   | \_\_call\_\_     | Function     | Decorator which returns a function which calls the decorated function with the keyword parameter canvas=this_canvas_object.<br>Of course other arguments are also passed through. |
+   
+   Properties:  
+   
+   | Name          | Type                    | Setter | Description                          |
+   |---------------|-------------------------|--------|--------------------------------------|
+   | lazy_drawing  | context manager factory | No     | prevents the transmission of commands till the with-statement was left<br>`with canvas.lazy_drawing: pass`|
+
+
+
+
+### Examples
 
 Command formats:
 
@@ -107,6 +202,63 @@ ImageLayer 0< <(
     read
 } | ImageLayer
 ```
+
+Python library:  
+
+- curses (based on https://docs.python.org/3/howto/curses.html#user-input):  
+```python
+  import curses
+  import time
+  from curses.textpad import Textbox, rectangle
+  import ueberzug.lib.v0 as ueberzug
+  
+  
+  @ueberzug.Canvas()
+  def main(stdscr, canvas):
+      demo = canvas.create_placement('demo', x=10, y=0)
+      stdscr.addstr(0, 0, "Enter IM message: (hit Ctrl-G to send)")
+  
+      editwin = curses.newwin(5, 30, 3, 1)
+      rectangle(stdscr, 2, 0, 2+5+1, 2+30+1)
+      stdscr.refresh()
+  
+      box = Textbox(editwin)
+  
+      # Let the user edit until Ctrl-G is struck.
+      box.edit()
+  
+      # Get resulting contents
+      message = box.gather()
+      demo.path = ''.join(message.split())
+      demo.visibility = ueberzug.Visibility.VISIBLE
+      time.sleep(2)
+  
+  
+  if __name__ == '__main__':
+      curses.wrapper(main)
+  ```
+  
+- general example:  
+  ```python
+  import ueberzug.lib.v0 as ueberzug
+  import time
+  
+  if __name__ == '__main__':
+      with ueberzug.Canvas() as c:
+          paths = ['/some/path/some_image.png', '/some/path/another_image.png']
+          demo = c.create_placement('demo', x=0, y=0)
+          demo.path = paths[0]
+          demo.visibility = ueberzug.Visibility.VISIBLE
+  
+          for i in range(30):
+              with c.lazy_drawing:
+                  demo.x = i * 3
+                  demo.y = i * 3
+                  demo.path = paths[i % 2]
+              time.sleep(1/30)
+  
+          time.sleep(2)
+  ```
 
 Scripts:
 
