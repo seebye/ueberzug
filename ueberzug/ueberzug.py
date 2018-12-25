@@ -48,8 +48,8 @@ async def main_xevents(loop, display, windows):
             windows.process_event(event)
 
 
-async def main_commands(loop, shutdown_routine, parser_object,
-                        windows, view):
+async def main_commands(loop, shutdown_routine_factory,
+                        parser_object, windows, view):
     """Coroutine which processes the input of stdin"""
     try:
         async for line in aio.LineReader(loop, sys.stdin):
@@ -58,9 +58,9 @@ async def main_commands(loop, shutdown_routine, parser_object,
 
             try:
                 data = parser_object.parse(line[:-1])
-                command = action.Command(data.pop('action'))
-                command.action_class(windows, view) \
-                    .execute(**data)
+                command = action.Command(data['action'])
+                command.action_class(**data) \
+                    .apply(windows, view)
             except (OSError, KeyError, ValueError, TypeError) as error:
                 print(parser_object.unparse({
                     'type': 'error',
@@ -69,7 +69,7 @@ async def main_commands(loop, shutdown_routine, parser_object,
                     # 'stack': traceback.format_exc()
                 }), file=sys.stderr)
     finally:
-        asyncio.ensure_future(shutdown_routine)
+        asyncio.ensure_future(shutdown_routine_factory())
 
 
 async def query_windows(window_factory, windows, view):
@@ -108,11 +108,15 @@ async def query_windows(window_factory, windows, view):
 
 
 async def shutdown(loop):
-    tasks = [task for task in asyncio.Task.all_tasks() if task is not
-             asyncio.tasks.Task.current_task()]
+    tasks = [task for task in asyncio.Task.all_tasks()
+             if task is not asyncio.tasks.Task.current_task()]
     list(map(lambda task: task.cancel(), tasks))
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
+
+
+def shutdown_factory(loop):
+    return lambda: asyncio.ensure_future(shutdown(loop))
 
 
 def setup_tmux_hooks():
@@ -148,7 +152,6 @@ def main_layer(options):
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
-    shutdown_routine = shutdown(loop)  # pylint: disable=E1111
     parser_class = parser.ParserOption(options['--parser']).parser_class
     view = ui.View()
     window_factory = ui.OverlayWindow.Factory(display, view)
@@ -166,8 +169,7 @@ def main_layer(options):
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(
-                sig,
-                functools.partial(asyncio.ensure_future, shutdown_routine))
+                sig, shutdown_factory(loop))
 
         loop.add_signal_handler(
             signal.SIGUSR1,
@@ -176,7 +178,7 @@ def main_layer(options):
 
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(
-            loop, shutdown_routine, parser_class(),
+            loop, shutdown_factory(loop), parser_class(),
             windows, view))
 
         try:
@@ -187,7 +189,7 @@ def main_layer(options):
 
 
 def main_library():
-    directory = pathlib.PosixPath(os.path.abspath(os.path.dirname(__file__))) / 'libs'
+    directory = pathlib.PosixPath(os.path.abspath(os.path.dirname(__file__))) / 'lib'
     print((directory / 'lib.sh').as_posix())
 
 
