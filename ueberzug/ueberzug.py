@@ -58,16 +58,13 @@ async def main_commands(loop, shutdown_routine_factory,
 
             try:
                 data = parser_object.parse(line[:-1])
-                command = action.Command(data['action'])  # pylint: disable=E1120
+                command = action.Command(data['action'])
                 command.action_class(**data) \
-                        .apply(windows, view)
-            except (parser.ParseError, OSError, KeyError, ValueError, TypeError) as error:
-                cause = (error.args[0]
-                         if isinstance(error, parser.ParseError)
-                         else error)
+                    .apply(windows, view)
+            except (OSError, KeyError, ValueError, TypeError) as error:
                 print(parser_object.unparse({
                     'type': 'error',
-                    'name': type(cause).__name__,
+                    'name': type(error).__name__,
                     'message': str(error),
                     # 'stack': traceback.format_exc()
                 }), file=sys.stderr)
