@@ -35,17 +35,16 @@ def get_visual_id(screen, depth: int):
             'Screen does not support %d depth' % depth)
 
 
-def get_image_and_mask(image: Image):
-    """Splits the image into the displayed pixels
-    and it's opacity mask.
+def load_image(path: str) -> Image:
+    """Loads the image and removes the opacity mask.
 
     Args:
-        image (Image): PIL.Image instance
+        path (str): the path of the image file
 
     Returns:
-        (tuple of Image): (image, mask)
+        Image: rgb image
     """
-    mask = None
+    image = Image.open(path)
 
     if image.mode == 'P':
         image = image.convert('RGBA')
@@ -54,9 +53,7 @@ def get_image_and_mask(image: Image):
         image.load()
         image_alpha = image.split()[INDEX_ALPHA_CHANNEL]
         image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
-        mask = Image.new("1", image.size, color=1)
         image_rgb.paste(image, mask=image_alpha)
-        mask.paste(0, mask=image_alpha)
         image = image_rgb
     else:
         # convert to supported image formats
@@ -65,7 +62,7 @@ def get_image_and_mask(image: Image):
         image_rgb.paste(image)
         image = image_rgb
 
-    return image, mask
+    return image
 
 
 def add_overlay_text(image: Image, x: int, y: int, text: str,
@@ -114,7 +111,7 @@ class OverlayWindow:
     class Placement:
         def __init__(self, x: int, y: int, width: int, height: int,
                      max_width: int, max_height: int,
-                     image: Image, mask: Image = None):
+                     path: str):
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             self.x = x
@@ -123,8 +120,12 @@ class OverlayWindow:
             self.max_width = max_width
             self.height = height
             self.max_height = max_height
-            self.image = image
-            self.mask = mask
+            self.path = path
+            self.image = None
+
+        def load(self):
+            """Loads the image of this placement."""
+            self.image = self.image or load_image(self.path)
 
         def resolve(self, pane_offset: geometry.Distance,
                     term_info: xutil.TerminalWindowInfo):
@@ -137,6 +138,7 @@ class OverlayWindow:
             """
             # x, y are useful names in this case
             # pylint: disable=invalid-name
+            self.load()
             x = ((self.x + pane_offset.left) * term_info.font_width +
                  term_info.padding)
             y = ((self.y + pane_offset.top) * term_info.font_height +

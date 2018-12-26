@@ -1,8 +1,7 @@
 import abc
 import enum
 import attr
-
-import PIL.Image as Image
+import asyncio
 
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
@@ -43,10 +42,36 @@ class Identifiable:
 class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
     """Defines actions which redraws all windows."""
     # pylint: disable=abstract-method
+    __redraw_scheduled = False
+
+    @staticmethod
+    def schedule_redraw(windows):
+        """Creates a async function which redraws every window
+        if there is no unexecuted function
+        (returned by this function)
+        which does the same.
+
+        Args:
+            windows (batch.BatchList of ui.OverlayWindow):
+                the windows to be redrawn
+
+        Returns:
+            function: the redraw function or None
+        """
+        if not DrawAction.__redraw_scheduled:
+            DrawAction.__redraw_scheduled = True
+
+            async def redraw():
+                windows.draw()
+                DrawAction.__redraw_scheduled = False
+            return redraw()
+        return None
 
     def apply(self, windows, view):
         if self.draw and windows:
-            windows.draw()
+            function = self.schedule_redraw(windows)
+            if function:
+                asyncio.ensure_future(function)
 
 
 @attr.s(kw_only=True)
@@ -75,13 +100,11 @@ class AddImageAction(ImageAction):
         return 'add'
 
     def apply(self, windows, view):
-        image = Image.open(self.path)
-        image_rgb, mask = ui.get_image_and_mask(image)
         view.media[self.identifier] = ui.OverlayWindow.Placement(
             self.x, self.y,
             self.width, self.height,
             self.max_width, self.max_height,
-            image_rgb, mask)
+            self.path)
 
         super().apply(windows, view)
 
