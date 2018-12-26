@@ -62,7 +62,8 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             DrawAction.__redraw_scheduled = True
 
             async def redraw():
-                windows.draw()
+                if windows:
+                    windows.draw()
                 DrawAction.__redraw_scheduled = False
             return redraw()
         return None
