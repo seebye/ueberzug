@@ -1,3 +1,4 @@
+import select
 
 class LineReader:
     """Async iterator class used to read lines"""
@@ -15,4 +16,6 @@ class LineReader:
         return self
 
     async def __anext__(self):
+        if select.select([self._file], [], [], 0)[0]:
+            return self._file.readline()
         return await LineReader.read_line(self._loop, self._file)
