@@ -62,3 +62,12 @@ class TerminalInfo:
         self.padding = max(padding_horizontal, padding_vertical)
         self.font_width = self.__guess_font_size(cols, xpixels, self.padding)
         self.font_height = self.__guess_font_size(rows, ypixels, self.padding)
+
+        if ((xpixels < fallback_width or ypixels < fallback_height)
+                and not self.padding):
+            # some terminal emulators return the size of the text area
+            # instead of the size of the whole window
+            self.padding = 1/2 * min(fallback_width - xpixels,
+                                     fallback_height - ypixels)
+            self.font_width = xpixels / cols
+            self.font_height = ypixels / rows
