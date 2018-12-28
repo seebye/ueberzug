@@ -37,6 +37,7 @@ import ueberzug.parser as parser
 import ueberzug.ui as ui
 import ueberzug.batch as batch
 import ueberzug.action as action
+import ueberzug.result as result
 import ueberzug.tmux_util as tmux_util
 
 
@@ -55,10 +56,14 @@ async def main_commands(loop, shutdown_routine_factory,
             if not line:
                 break
 
-            data = parser_object.parse(line[:-1])
-            command = action.Command(data['action'])
-            command.action_class(**data) \
-                .apply(parser_object, windows, view)
+            try:
+                data = parser_object.parse(line[:-1])
+                command = action.Command(data['action'])
+                command.action_class(**data) \
+                    .apply(parser_object, windows, view)
+            except (OSError, KeyError, ValueError, TypeError) as error:
+                result.ErrorResult(error) \
+                    .print(parser_object)
     finally:
         asyncio.ensure_future(shutdown_routine_factory())
 

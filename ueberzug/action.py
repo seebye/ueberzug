@@ -3,6 +3,8 @@ import enum
 import attr
 import asyncio
 
+import PIL.Image as Image
+
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
 import ueberzug.result as result
@@ -98,6 +100,8 @@ class AddImageAction(ImageAction):
     If there's already an image with the given identifier
     it's going to be replaced.
     """
+    INDEX_ALPHA_CHANNEL = 3
+
     x = attr.ib(type=int, converter=int)
     y = attr.ib(type=int, converter=int)
     path = attr.ib(type=str)
@@ -110,12 +114,42 @@ class AddImageAction(ImageAction):
     def get_action_name():
         return 'add'
 
+    @staticmethod
+    def load_image(path: str) -> Image:
+        """Loads the image and removes the opacity mask.
+
+        Args:
+            path (str): the path of the image file
+
+        Returns:
+            Image: rgb image
+        """
+        image = Image.open(path)
+
+        if image.mode == 'P':
+            image = image.convert('RGBA')
+
+        if image.mode in 'RGBA' and len(image.getbands()) == 4:
+            image.load()
+            image_alpha = image.split()[AddImageAction.INDEX_ALPHA_CHANNEL]
+            image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
+            image_rgb.paste(image, mask=image_alpha)
+            image = image_rgb
+        else:
+            # convert to supported image formats
+            image.load()
+            image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
+            image_rgb.paste(image)
+            image = image_rgb
+
+        return image
+
     def apply(self, parser_object, windows, view):
         view.media[self.identifier] = ui.OverlayWindow.Placement(
             self.x, self.y,
             self.width, self.height,
             self.max_width, self.max_height,
-            self.path)
+            self.load_image(self.path))
 
         super().apply(parser_object, windows, view)
 
