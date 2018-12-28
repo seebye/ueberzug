@@ -26,7 +26,6 @@ import sys
 import os
 import asyncio
 import signal
-import functools
 import pathlib
 
 import docopt
@@ -56,18 +55,10 @@ async def main_commands(loop, shutdown_routine_factory,
             if not line:
                 break
 
-            try:
-                data = parser_object.parse(line[:-1])
-                command = action.Command(data['action'])
-                command.action_class(**data) \
-                    .apply(windows, view)
-            except (OSError, KeyError, ValueError, TypeError) as error:
-                print(parser_object.unparse({
-                    'type': 'error',
-                    'name': type(error).__name__,
-                    'message': str(error),
-                    # 'stack': traceback.format_exc()
-                }), file=sys.stderr)
+            data = parser_object.parse(line[:-1])
+            command = action.Command(data['action'])
+            command.action_class(**data) \
+                .apply(parser_object, windows, view)
     finally:
         asyncio.ensure_future(shutdown_routine_factory())
 

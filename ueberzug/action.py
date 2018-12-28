@@ -5,10 +5,16 @@ import asyncio
 
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
+import ueberzug.result as result
 
 
 @attr.s
 class Action(metaclass=abc.ABCMeta):
+    """Describes the structure used to define actions classes.
+
+    Defines a general interface used to implement the building of commands
+    and their execution.
+    """
     action = attr.ib(type=str, default=attr.Factory(
         lambda self: self.get_action_name(), takes_self=True))
 
@@ -19,7 +25,7 @@ class Action(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def apply(self, windows, view):
+    def apply(self, parser_object, windows, view):
         """Executes the action on  the passed view and windows."""
         raise NotImplementedError()
 
@@ -45,7 +51,7 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
     __redraw_scheduled = False
 
     @staticmethod
-    def schedule_redraw(windows):
+    def schedule_redraw(parser_object, windows):
         """Creates a async function which redraws every window
         if there is no unexecuted function
         (returned by this function)
@@ -62,15 +68,19 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             DrawAction.__redraw_scheduled = True
 
             async def redraw():
-                if windows:
-                    windows.draw()
+                try:
+                    if windows:
+                        windows.draw()
+                except (OSError, KeyError, ValueError, TypeError) as error:
+                    result.ErrorResult(error) \
+                        .print(parser_object)
                 DrawAction.__redraw_scheduled = False
             return redraw()
         return None
 
-    def apply(self, windows, view):
+    def apply(self, parser_object, windows, view):
         if self.draw and windows:
-            function = self.schedule_redraw(windows)
+            function = self.schedule_redraw(parser_object, windows)
             if function:
                 asyncio.ensure_future(function)
 
@@ -100,14 +110,14 @@ class AddImageAction(ImageAction):
     def get_action_name():
         return 'add'
 
-    def apply(self, windows, view):
+    def apply(self, parser_object, windows, view):
         view.media[self.identifier] = ui.OverlayWindow.Placement(
             self.x, self.y,
             self.width, self.height,
             self.max_width, self.max_height,
             self.path)
 
-        super().apply(windows, view)
+        super().apply(parser_object, windows, view)
 
 
 @attr.s(kw_only=True)
@@ -118,11 +128,11 @@ class RemoveImageAction(ImageAction):
     def get_action_name():
         return 'remove'
 
-    def apply(self, windows, view):
+    def apply(self, parser_object, windows, view):
         if self.identifier in view.media:
             del view.media[self.identifier]
 
-            super().apply(windows, view)
+            super().apply(parser_object, windows, view)
 
 
 @enum.unique
