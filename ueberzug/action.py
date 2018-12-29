@@ -7,7 +7,6 @@ import PIL.Image as Image
 
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
-import ueberzug.result as result
 
 
 @attr.s
@@ -70,12 +69,8 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             DrawAction.__redraw_scheduled = True
 
             async def redraw():
-                try:
-                    if windows:
-                        windows.draw()
-                except (OSError, KeyError, ValueError, TypeError) as error:
-                    result.ErrorResult(error) \
-                        .print(parser_object)
+                if windows:
+                    windows.draw()
                 DrawAction.__redraw_scheduled = False
             return redraw()
         return None
