@@ -104,16 +104,16 @@ class OverlayWindow:
                  term_info.padding)
             y = ((self.y + pane_offset.top) * term_info.font_height +
                  term_info.padding)
-            width = self.width * term_info.font_width \
-                    if self.width \
-                    else self.image.width
-            height = self.height * term_info.font_height \
-                    if self.height \
-                    else self.image.height
-            max_width = self.max_width and \
-                    (self.max_width * term_info.font_width)
-            max_height = self.max_height and \
-                    (self.max_height * term_info.font_height)
+            width = (self.width * term_info.font_width
+                     if self.width
+                     else self.image.width)
+            height = (self.height * term_info.font_height
+                      if self.height
+                      else self.image.height)
+            max_width = (self.max_width and
+                         (self.max_width * term_info.font_width))
+            max_height = (self.max_height and
+                          (self.max_height * term_info.font_height))
 
             if (max_width and max_width < width):
                 height = height * max_width / width
@@ -126,7 +126,6 @@ class OverlayWindow:
                                       Image.ANTIALIAS)
 
             return int(x), int(y), int(width), int(height), image
-
 
     def __init__(self, display: Xdisplay.Display,
                  view: View, term_info: xutil.TerminalWindowInfo):
@@ -164,7 +163,6 @@ class OverlayWindow:
         mask_gc = None
 
         try:
-            #self.window.clear_area(x=0, y=0, width=self._width, height=self._height)
             mask = self.window.create_pixmap(self._width, self._height, 1)
             mask_gc = mask.create_gc(graphics_exposures=False)
 
@@ -182,7 +180,9 @@ class OverlayWindow:
                 mask.fill_rectangle(mask_gc, x, y, width, height)
 
                 if not self._view.offset.left == self._view.offset.top == 0:
-                    add_overlay_text(image, 0, 0, "Multi pane windows aren't supported")
+                    add_overlay_text(
+                        image, 0, 0,
+                        "Multi pane windows aren't supported")
 
                 self.window.put_pil_image(
                     self._window_gc, x, y, image)
@@ -204,7 +204,8 @@ class OverlayWindow:
             return
 
         visual_id = get_visual_id(self._screen, OverlayWindow.SCREEN_DEPTH)
-        self._colormap = self._screen.root.create_colormap(visual_id, X.AllocNone)
+        self._colormap = self._screen.root.create_colormap(
+            visual_id, X.AllocNone)
         self.parent_window = self._display.create_resource_object(
             'window', self.parent_info.window_id)
         parent_size = None
@@ -215,11 +216,9 @@ class OverlayWindow:
             self.parent_info.calculate_sizes(
                 parent_size.width, parent_size.height)
         self._width, self._height = parent_size.width, parent_size.height
-        #print('parent', self.parent_window.id)
 
         self.window = self.parent_window.create_window(
             0, 0, parent_size.width, parent_size.height, 0,
-            #0, 0, 1, 1, 0,
             OverlayWindow.SCREEN_DEPTH,
             X.InputOutput,
             visual_id,
@@ -228,8 +227,6 @@ class OverlayWindow:
             background_pixel=0,
             border_pixel=0,
             event_mask=X.ExposureMask)
-        #self.window.composite_redirect_subwindows(1)
-        #print('window', self.window.id)
         self.parent_window.change_attributes(
             event_mask=X.StructureNotifyMask)
         self._window_gc = self.window.create_gc()
@@ -244,8 +241,6 @@ class OverlayWindow:
             self.draw()
         elif (isinstance(event, Xevent.ConfigureNotify) and
               event.window.id == self.parent_window.id):
-            #print('target id', event.window.id, event)
-            #size = self.window.get_geometry()
             delta_width = event.width - self._width
             delta_height = event.height - self._height
 

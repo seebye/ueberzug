@@ -1,5 +1,6 @@
 import select
 
+
 class LineReader:
     """Async iterator class used to read lines"""
 

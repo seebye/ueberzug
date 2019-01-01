@@ -34,11 +34,13 @@ class BatchList(list):
 
     class BatchMethod(BatchMember):
         def __call__(self, *args, **kwargs):
-            return BatchList([instance.__getattribute__(self.name)(*args, **kwargs)
-                              for instance in self.outer])
+            return BatchList(
+                [instance.__getattribute__(self.name)(*args, **kwargs)
+                 for instance in self.outer])
 
     def __new__(cls, *args, **kwargs):
-        """As decorators only work if the class object contains the declarations,
+        """As decorators only work
+        if the class object contains the declarations,
         we need to create a subclass for each different type
         which is used in combination with BatchList.
         This is what this method is going to do.
@@ -55,8 +57,10 @@ class BatchList(list):
             collection (List): List of target instances
         """
         if not collection:
-            raise ValueError('BatchList needs to be initialised with an existing instance '
-                             'as python declares (non static) class fields within __init__.')
+            raise ValueError(
+                'BatchList needs to be initialised with '
+                'an existing instance as python declares '
+                '(non static) class fields within __init__.')
 
         super().__init__(collection)
         if self:
@@ -68,7 +72,7 @@ class BatchList(list):
         setattr(type(self), name, decorator)
 
     def __init_attributes__(self, target_instance):
-        attributes = (vars(target_instance) \
+        attributes = (vars(target_instance)
                       if hasattr(target_instance, '__dict__')
                       else [])
 
@@ -80,10 +84,12 @@ class BatchList(list):
         for name, value in filter(lambda i: not i[0].startswith('_'),
                                   vars(type(target_instance)).items()):
             if callable(value):
-                self.__declare_decorator__(name, BatchList.BatchMethod(self, name))
+                self.__declare_decorator__(
+                    name, BatchList.BatchMethod(self, name))
             else:
                 # should be an decorator
-                self.__declare_decorator__(name, BatchList.BatchField(self, name))
+                self.__declare_decorator__(
+                    name, BatchList.BatchField(self, name))
 
     def __enter__(self):
         self.entered = True
@@ -164,19 +170,19 @@ if __name__ == '__main__':
             self.c = c
 
         def ok(self):
-            return self.b #'foo'
+            return self.b
 
         @property
         def prop(self):
-            return self.c #'supi'
+            return self.c
 
     # print attributes
-    #print(vars(FooBar()))
+    # print(vars(FooBar()))
     # print properties and methods
-    #print(vars(FooBar).keys())
-    l = BatchList([FooBar('foo', 'bar', 'yay')])
-    l += [FooBar('foobar', 'barfoo', 'yay foobar')]
-    print('mhm', l.mhm)
-    print('prop', l.prop)
-    #print('ok', l.ok)
-    print('ok call', l.ok())
+    # print(vars(FooBar).keys())
+    blist = BatchList([FooBar('foo', 'bar', 'yay')])
+    blist += [FooBar('foobar', 'barfoo', 'yay foobar')]
+    print('mhm', blist.mhm)
+    print('prop', blist.prop)
+    # print('ok', blist.ok)
+    print('ok call', blist.ok())

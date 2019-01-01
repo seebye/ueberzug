@@ -8,7 +8,8 @@ import math
 class TerminalInfo:
     @staticmethod
     def get_size(fd_pty=None):
-        """Determines the columns, rows, width (px), height (px) of the terminal.
+        """Determines the columns, rows, width (px),
+        height (px) of the terminal.
 
         Returns:
             tuple of int: cols, rows, width, height

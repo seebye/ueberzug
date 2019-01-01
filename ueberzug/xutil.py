@@ -18,6 +18,7 @@ Xdisplay.Display.__exit__ = lambda self, *args: self.close()
 PREPARED_DISPLAYS = []
 DISPLAY_SUPPLIES = 5
 
+
 class Events:
     """Async iterator class for x11 events"""
 
@@ -77,7 +78,8 @@ def get_parent_pids(pid=None):
 
 def get_pid_by_window_id(display: Xdisplay.Display, window_id: int):
     window = display.create_resource_object('window', window_id)
-    prop = window.get_full_property(display.intern_atom('_NET_WM_PID'), Xlib.X.AnyPropertyType)
+    prop = window.get_full_property(display.intern_atom('_NET_WM_PID'),
+                                    Xlib.X.AnyPropertyType)
     return (prop.value[0] if prop
             else None)
 
@@ -90,8 +92,11 @@ def get_pid_window_id_map():
     """
     with get_display() as display:
         root = display.screen().root
-        win_ids = root.get_full_property(display.intern_atom('_NET_CLIENT_LIST'),
-                                         Xlib.X.AnyPropertyType).value
+        win_ids = \
+            (root.get_full_property(
+                display.intern_atom('_NET_CLIENT_LIST'),
+                Xlib.X.AnyPropertyType)
+             .value)
 
         return {
             get_pid_by_window_id(display, window_id): window_id
