@@ -12,10 +12,24 @@ def is_used():
 
 def get_pane():
     """Determines the pane identifier this process runs in.
+
     Returns:
         str or None
     """
     return os.environ.get('TMUX_PANE')
+
+
+def get_session_id():
+    """Determines the session identifier this process runs in.
+
+    Returns:
+        str
+    """
+    return subprocess.check_output([
+        'tmux', 'display', '-p',
+        '-F', '#{session_id}',
+        '-t', get_pane()
+    ]).decode().strip()
 
 
 def get_offset():

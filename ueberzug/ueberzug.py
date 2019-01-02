@@ -27,6 +27,7 @@ import os
 import asyncio
 import signal
 import pathlib
+import tempfile
 
 import docopt
 
@@ -130,15 +131,42 @@ def setup_tmux_hooks():
         'session-window-changed',
         'pane-mode-changed'
     )
-    command = 'kill -USR1 ' + str(os.getpid())
+    lock_directory_path = pathlib.PosixPath(tempfile.gettempdir()) / 'ueberzug'
+    lock_file_path = lock_directory_path / tmux_util.get_session_id()
+    own_pid = str(os.getpid())
+    command_template = 'kill -USR1 '
 
-    for event in events:
-        tmux_util.register_hook(event, command)
+    try:
+        lock_directory_path.mkdir()
+    except FileExistsError:
+        pass
+
+    def update_hooks(pid_file, pids):
+        pids = ' '.join(pids)
+        command = command_template + pids
+
+        pid_file.seek(0)
+        pid_file.truncate()
+        pid_file.write(pids)
+        pid_file.flush()
+
+        for event in events:
+            if pids:
+                tmux_util.register_hook(event, command)
+            else:
+                tmux_util.unregister_hook(event)
 
     def remove_hooks():
         """Removes the hooks registered by the outer function."""
-        for event in events:
-            tmux_util.unregister_hook(event)
+        with files.lock(lock_file_path) as lock_file:
+            pids = set(lock_file.read().split())
+            pids.discard(own_pid)
+            update_hooks(lock_file, pids)
+
+    with files.lock(lock_file_path) as lock_file:
+        pids = set(lock_file.read().split())
+        pids.add(own_pid)
+        update_hooks(lock_file, pids)
 
     return remove_hooks
 
