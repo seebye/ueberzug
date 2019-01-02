@@ -147,11 +147,12 @@ class BatchList(list):
         if self.entered:
             for i in other:
                 i.__enter__()
-        super().__iadd__(other)
+        return super().__iadd__(other)
 
     def __isub__(self, other):
         for i in other:
             self.remove(i)
+        return self
 
     def __add__(self, other):
         return BatchList(super().__add__(other))
