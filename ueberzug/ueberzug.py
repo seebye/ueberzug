@@ -31,7 +31,7 @@ import pathlib
 import docopt
 
 import ueberzug.thread as thread
-import ueberzug.aio as aio
+import ueberzug.files as files
 import ueberzug.xutil as xutil
 import ueberzug.parser as parser
 import ueberzug.ui as ui
@@ -52,7 +52,7 @@ async def main_commands(loop, shutdown_routine_factory,
                         parser_object, windows, view):
     """Coroutine which processes the input of stdin"""
     try:
-        async for line in aio.LineReader(loop, sys.stdin):
+        async for line in files.LineReader(loop, sys.stdin):
             if not line:
                 break
 
