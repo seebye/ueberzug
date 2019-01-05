@@ -40,6 +40,8 @@ def lock(path: pathlib.PosixPath):
         path.touch()
 
     with path.open("r+") as lock_file:
-        fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
-        yield lock_file
-        fcntl.lockf(lock_file.fileno(), fcntl.LOCK_UN)
+        try:
+            fcntl.lockf(lock_file.fileno(), fcntl.LOCK_EX)
+            yield lock_file
+        finally:
+            fcntl.lockf(lock_file.fileno(), fcntl.LOCK_UN)
