@@ -276,8 +276,9 @@ class Canvas:
     """The class which represents the drawing area."""
 
     def __init__(self, debug=False):
-        self.__process = UeberzugProcess([] if debug else ['--silent'])
-        self.__transmitter = DequeCommandTransmitter(self.__process)
+        self.__process_arguments = [] if debug else ['--silent']
+        self.__process = None
+        self.__transmitter = None
         self.__used_identifiers = set()
 
     def create_placement(self, identifier, *args, **kwargs):
@@ -317,11 +318,17 @@ class Canvas:
         return decorator
 
     def __enter__(self):
+        self.__process = UeberzugProcess(self.__process_arguments)
+        self.__transmitter = DequeCommandTransmitter(self.__process)
         self.__process.start()
         return self
 
     def __exit__(self, *args):
-        self.__process.stop()
+        try:
+            self.__process.stop()
+        finally:
+            self.__process = None
+            self.__transmitter = None
 
     def enqueue(self, command: _action.Action):
         """Enqueues a command.
