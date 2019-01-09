@@ -45,8 +45,7 @@ import ueberzug.tmux_util as tmux_util
 async def main_xevents(loop, display, windows):
     """Coroutine which processes X11 events"""
     async for event in xutil.Events(loop, display):
-        if windows:
-            windows.process_event(event)
+        windows.process_event(event)
 
 
 async def main_commands(loop, shutdown_routine_factory,
@@ -100,7 +99,7 @@ async def query_windows(window_factory, windows, view):
             for wid in removed_window_ids
         ]
 
-    if draw and windows:
+    if draw:
         windows.draw()
 
 

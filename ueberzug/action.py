@@ -69,14 +69,13 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             DrawAction.__redraw_scheduled = True
 
             async def redraw():
-                if windows:
-                    windows.draw()
+                windows.draw()
                 DrawAction.__redraw_scheduled = False
             return redraw()
         return None
 
     def apply(self, parser_object, windows, view):
-        if self.draw and windows:
+        if self.draw:
             function = self.schedule_redraw(parser_object, windows)
             if function:
                 asyncio.ensure_future(function)
