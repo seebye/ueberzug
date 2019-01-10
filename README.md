@@ -99,7 +99,7 @@ source "`ueberzug library`"
 - `ImageLayer` starts the ueberzug process and uses bashs associative arrays to transfer commands.  
 - Also there will be a function named `ImageLayer::{action_name}` declared for each action.  
   Each of this function takes the key values pairs of the respective action as arguments.  
-  Every argument of these functions accepts associative key value pairs only.  
+  Every argument of these functions has to be an associative key value pair.  
   `ImageLayer::{action_name} [{key0}]="{value0}" [{key1}]="{value1}" ...`  
   Executing such a function builds the desired command string according to the passed arguments and prints it to stdout.  
 
