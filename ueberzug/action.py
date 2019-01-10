@@ -1,9 +1,10 @@
 import abc
 import enum
-import attr
 import asyncio
+import os.path
 
 import PIL.Image as Image
+import attr
 
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
@@ -144,11 +145,22 @@ class AddImageAction(ImageAction):
         return image
 
     def apply(self, parser_object, windows, view):
+        old_placement = view.media.get(self.identifier)
+        image = old_placement and old_placement.image
+        last_modified = old_placement and old_placement.last_modified
+        current_last_modified = os.path.getmtime(self.path)
+
+        if (not image
+                or last_modified < current_last_modified
+                or self.path != old_placement.path):
+            last_modified = current_last_modified
+            image = self.load_image(self.path)
+
         view.media[self.identifier] = ui.OverlayWindow.Placement(
             self.x, self.y,
             self.width, self.height,
             self.max_width, self.max_height,
-            self.load_image(self.path))
+            self.path, image, last_modified)
 
         super().apply(parser_object, windows, view)
 

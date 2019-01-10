@@ -78,7 +78,7 @@ class OverlayWindow:
     class Placement:
         def __init__(self, x: int, y: int, width: int, height: int,
                      max_width: int, max_height: int,
-                     image: Image):
+                     path: str, image: Image, last_modified: int):
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             self.x = x
@@ -87,7 +87,9 @@ class OverlayWindow:
             self.max_width = max_width
             self.height = height
             self.max_height = max_height
+            self.path = path
             self.image = image
+            self.last_modified = last_modified
 
         def resolve(self, pane_offset: geometry.Distance,
                     term_info: xutil.TerminalWindowInfo):
