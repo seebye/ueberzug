@@ -170,6 +170,7 @@ import ueberzug.lib.v0 as ueberzug
    | Name          | Type                    | Setter | Description                          |
    |---------------|-------------------------|--------|--------------------------------------|
    | lazy_drawing  | context manager factory | No     | prevents the transmission of commands till the with-statement was left<br>`with canvas.lazy_drawing: pass`|
+   | synchronous_lazy_drawing  | context manager factory | No     | Does the same as lazy_drawing. Additionally forces the redrawing of the windows to happen immediately. |
 
 
 
