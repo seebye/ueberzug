@@ -216,6 +216,11 @@ class CommandTransmitter:
     def __init__(self, process):
         self._process = process
 
+    @abc.abstractproperty
+    def synchronously_draw(self):
+        """bool: execute draw operations of ImageActions synchrously"""
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def enqueue(self, action: _action.Action):
         """Enqueues a command.
@@ -237,6 +242,15 @@ class DequeCommandTransmitter(CommandTransmitter):
     def __init__(self, process):
         super().__init__(process)
         self.__queue_commands = collections.deque()
+        self.__synchronously_draw = False
+
+    @property
+    def synchronously_draw(self):
+        return self.__synchronously_draw
+
+    @synchronously_draw.setter
+    def synchronously_draw(self, value):
+        self.__synchronously_draw = value
 
     def enqueue(self, action: _action.Action):
         self.__queue_commands.append(action)
@@ -246,7 +260,9 @@ class DequeCommandTransmitter(CommandTransmitter):
             command = self.__queue_commands.popleft()
             self._process.stdin.write(json.dumps({
                 **attr.asdict(command),
-                **attr.asdict(_action.Drawable(draw=not self.__queue_commands))
+                **attr.asdict(_action.Drawable(
+                    synchronously_draw=self.__synchronously_draw,
+                    draw=not self.__queue_commands))
             }))
             self._process.stdin.write('\n')
         self._process.stdin.flush()
@@ -260,6 +276,14 @@ class LazyCommandTransmitter(CommandTransmitter):
     def __init__(self, transmitter):
         super().__init__(None)
         self.transmitter = transmitter
+
+    @property
+    def synchronously_draw(self):
+        return self.transmitter.synchronously_draw
+
+    @synchronously_draw.setter
+    def synchronously_draw(self, value):
+        self.transmitter.synchronously_draw = value
 
     def enqueue(self, action: _action.Action):
         self.transmitter.enqueue(action)
@@ -310,6 +334,26 @@ class Canvas:
             self.__transmitter.force_transmit()
         finally:
             self.__transmitter = self.__transmitter.transmitter
+
+    @property
+    @contextlib.contextmanager
+    def synchronous_lazy_drawing(self):
+        """Context manager factory function which
+        prevents transmitting commands till the with-statement ends.
+        Also enforces to execute the draw operation synchronously
+        right after the last command.
+
+        Raises:
+            IOError: on transmitting commands
+                     if stdin of the ueberzug process was closed
+                     during an attempt of writing to it.
+        """
+        try:
+            self.__transmitter.synchronously_draw = True
+            with self.lazy_drawing:
+                yield
+        finally:
+            self.__transmitter.synchronously_draw = False
 
     def __call__(self, function):
         def decorator(*args, **kwargs):

@@ -66,6 +66,7 @@ it will be replaced.
 | max_width     | Integer      | image will be resized (while keeping it's aspect ratio) if it's width is bigger than max width | Yes |
 | max_height    | Integer      | image will be resized (while keeping it's aspect ratio) if it's height is bigger than max height | Yes |
 | draw          | Boolean      | redraw window after adding the image, default True                 | Yes      |
+| synchronously_draw | Boolean | redraw window immediately                                          | Yes      |
 
 #### Remove
 

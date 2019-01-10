@@ -35,6 +35,7 @@ class Action(metaclass=abc.ABCMeta):
 class Drawable:
     """Defines the attributes of drawable actions."""
     draw = attr.ib(default=True, converter=conversion.to_bool)
+    synchronously_draw = attr.ib(default=False, converter=conversion.to_bool)
 
 
 @attr.s(kw_only=True)
@@ -52,7 +53,7 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
     __redraw_scheduled = False
 
     @staticmethod
-    def schedule_redraw(parser_object, windows):
+    def schedule_redraw(windows):
         """Creates a async function which redraws every window
         if there is no unexecuted function
         (returned by this function)
@@ -76,7 +77,11 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
 
     def apply(self, parser_object, windows, view):
         if self.draw:
-            function = self.schedule_redraw(parser_object, windows)
+            if self.synchronously_draw:
+                windows.draw()
+                return
+
+            function = self.schedule_redraw(windows)
             if function:
                 asyncio.ensure_future(function)
 
