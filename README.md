@@ -82,6 +82,8 @@ Removes an image from the screen.
 
 ### Libraries
 
+Just a reminder: This is a GPLv3 licensed project, so if you use any of these libraries you also need to license it with a GPLv3 compatible license.
+
 #### Bash
 
 First of all the library doesn't follow the posix standard,  
