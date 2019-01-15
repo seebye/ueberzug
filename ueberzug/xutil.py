@@ -92,15 +92,9 @@ def get_pid_window_id_map():
     """
     with get_display() as display:
         root = display.screen().root
-        win_ids = \
-            (root.get_full_property(
-                display.intern_atom('_NET_CLIENT_LIST'),
-                Xlib.X.AnyPropertyType)
-             .value)
-
         return {
-            get_pid_by_window_id(display, window_id): window_id
-            for window_id in win_ids
+            get_pid_by_window_id(display, window.id): window.id
+            for window in root.query_tree().children
         }
 
 
@@ -137,15 +131,10 @@ def get_first_pty(pids: list):
     return None
 
 
-def get_parent_window_infos(cache={}):
+def get_parent_window_infos():
     """Determines the window id of each
     terminal which displays the program using
     this layer.
-
-    Args:
-        cache (dict): cached pid: wids as X11
-                      only returns information of mapped windows
-                      (shouldn't be passed in most cases)
 
     Returns:
         list of TerminalWindowInfo
@@ -163,9 +152,7 @@ def get_parent_window_infos(cache={}):
 
         for pid, pty in clients_pid_tty.items():
             ppids = get_parent_pids(pid)
-            wid = (get_first_window_id(pid_window_id_map, ppids)
-                   or cache.get(pid))
-            cache[pid] = wid
+            wid = get_first_window_id(pid_window_id_map, ppids)
 
             if pty is None and not os.isatty(sys.stdout.fileno()):
                 # note: this method won't return the desired pseudo tty
