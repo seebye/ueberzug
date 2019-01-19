@@ -92,10 +92,18 @@ def get_pid_window_id_map():
     """
     with get_display() as display:
         root = display.screen().root
-        return {
+        visible_window_ids = \
+            (root.get_full_property(
+                display.intern_atom('_NET_CLIENT_LIST'),
+                Xlib.X.AnyPropertyType)
+             .value)
+        return {**{
             get_pid_by_window_id(display, window.id): window.id
             for window in root.query_tree().children
-        }
+        }, **{
+            get_pid_by_window_id(display, window_id): window_id
+            for window_id in visible_window_ids
+        }}
 
 
 def get_first_window_id(pid_window_id_map: dict, pids: list):
