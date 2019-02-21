@@ -28,13 +28,23 @@ function Error::raise {
 }
 
 
+function Map::escape_items {
+    while (( "${#@}" > 0 )); do
+        local key="${1%%=[^=]*}"
+        local value="${1#[^=]*=}"
+        printf "%s=%q " "$key" "$value"
+        shift
+    done
+}
+
+
 function ImageLayer {
     ueberzug layer -p bash "$@"
 }
 
 function ImageLayer::__build_command {
     local -a required_keys=( $1 ); shift
-    local -A data="( $@ )"
+    local -A data="( `Map::escape_items "$@"` )"
 
     for key in "${required_keys[@]}"; do
         # see: https://stackoverflow.com/a/13221491
