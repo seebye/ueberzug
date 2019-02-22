@@ -114,7 +114,6 @@ Image_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     return (PyObject*)self;
 }
 
-
 static PyObject *
 Image_init(Image *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"width", "height", NULL};
@@ -223,35 +222,35 @@ Image_draw(Image *self, PyObject *args, PyObject *kwds) {
 
             if (! ((uintptr_t)self->image->data <= (uintptr_t)destination)) {
                 raise(AssertionError,
-                    "The destination start address calculation went wrong.\n"
-                    "It points to an address which is before the start address of the buffer.\n"
-                    "%p not smaller than %p",
-                    self->image->data, destination);
+                      "The destination start address calculation went wrong.\n"
+                      "It points to an address which is before the start address of the buffer.\n"
+                      "%p not smaller than %p",
+                      self->image->data, destination);
             }
             if (! ((uintptr_t)destination + pixels_per_row
                    <= (uintptr_t)self->image->data + self->buffer_size)) {
                 raise(AssertionError,
-                    "The destination end address calculation went wrong.\n"
-                    "It points to an address which is after the end address of the buffer.\n"
-                    "%p not smaller than %p",
-                    destination + pixels_per_row,
-                    self->image->data + self->buffer_size);
+                      "The destination end address calculation went wrong.\n"
+                      "It points to an address which is after the end address of the buffer.\n"
+                      "%p not smaller than %p",
+                      destination + pixels_per_row,
+                      self->image->data + self->buffer_size);
             }
             if (! ((uintptr_t)pixels <= (uintptr_t)source)) {
                 raise(AssertionError,
-                    "The source start address calculation went wrong.\n"
-                    "It points to an address which is before the start address of the buffer.\n"
-                    "%p not smaller than %p",
-                    pixels, source);
+                      "The source start address calculation went wrong.\n"
+                      "It points to an address which is before the start address of the buffer.\n"
+                      "%p not smaller than %p",
+                      pixels, source);
             }
             if (! ((uintptr_t)source + pixels_per_row
                    <= (uintptr_t)pixels + pixels_size)) {
                 raise(AssertionError,
-                    "The source end address calculation went wrong.\n"
-                    "It points to an address which is after the end address of the buffer."
-                    "%p not smaller than %p",
-                    source + pixels_per_row,
-                    pixels + pixels_size);
+                      "The source end address calculation went wrong.\n"
+                      "It points to an address which is after the end address of the buffer."
+                      "%p not smaller than %p",
+                      source + pixels_per_row,
+                      pixels + pixels_size);
             }
 
             memcpy(destination, source, pixels_per_row);
