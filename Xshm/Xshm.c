@@ -11,7 +11,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
-#define raise(Exception, message...) {\
+#define raise(Exception, message...) { \
     char errorMessage[500]; \
     snprintf(errorMessage, 500, message); \
     PyErr_SetString( \
