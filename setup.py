@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-
-# Always prefer setuptools over distutils
-from setuptools import setup, find_packages
+import setuptools
 # To use a consistent encoding
-from codecs import open
-from os import path
-
-here = path.abspath(path.dirname(__file__))
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
 
-setup(
+setuptools.setup(
     # This is the name of your project. The first time you publish this
     # package, this name will be registered for you. It will determine how
     # users can install this project, e.g.:
@@ -87,7 +81,7 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=find_packages(),  # Required
+    packages=setuptools.find_packages(),  # Required
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
