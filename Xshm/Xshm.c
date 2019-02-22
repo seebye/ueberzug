@@ -5,6 +5,7 @@
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
 
+#define INVALID_SHM_ID -1
 #define INVALID_SHM_ADDRESS (char*)-1
 #define BYTES_PER_PIXEL 4
 
@@ -50,7 +51,7 @@ Image_init_shared_memory(Image *self) {
         IPC_PRIVATE,
         self->buffer_size,
         IPC_CREAT | 0600);
-    return self->segmentInfo.shmid != -1;
+    return self->segmentInfo.shmid != INVALID_SHM_ID;
 }
 
 static bool
