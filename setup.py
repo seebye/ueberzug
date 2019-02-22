@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import distutils.core
 import setuptools
 # To use a consistent encoding
 
@@ -29,6 +30,10 @@ setuptools.setup(
             'ueberzug=ueberzug.ueberzug:main'
         ]
     },
+    ext_modules=[
+        distutils.core.Extension(
+            "Xshm", ["Xshm/Xshm.c"], libraries=["X11", "Xext"]),
+    ],
 
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/

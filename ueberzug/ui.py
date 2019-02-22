@@ -12,11 +12,16 @@ import PIL.ImageFont as ImageFont
 
 import ueberzug.xutil as xutil
 import ueberzug.geometry as geometry
+import Xshm
 
 
 class UnsupportedException(Exception):
     """Exception thrown for unsupported operations."""
     pass
+
+
+def roundup(value, unit):
+    return (value + (unit - 1)) & ~(unit - 1)
 
 
 def get_visual_id(screen, depth: int):
@@ -147,6 +152,9 @@ class OverlayWindow:
         self._view = view
         self._width = 1
         self._height = 1
+        self._image = Xshm.Image(
+            self._screen.width_in_pixels,
+            self._screen.height_in_pixels)
         self.create()
 
     def __enter__(self):
@@ -172,6 +180,9 @@ class OverlayWindow:
             mask_gc.change(foreground=COLOR_INVISIBLE)
             mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
 
+            pad = self.window.display.info.bitmap_format_scanline_pad
+            unit = self.window.display.info.bitmap_format_scanline_unit
+
             for placement in self._view.media.values():
                 # x, y are useful names in this case
                 # pylint: disable=invalid-name
@@ -186,9 +197,14 @@ class OverlayWindow:
                         image, 0, 0,
                         "Multi pane windows aren't supported")
 
-                self.window.put_pil_image(
-                    self._window_gc, x, y, image)
+                stride = roundup(width * unit, pad) >> 3
+                self._image.draw(
+                    x, y, width, height,
+                    image.tobytes("raw", 'BGRX', stride, 0))
 
+            self._image.copy_to(
+                self.window.id,
+                0, 0, self._width, self._height)
             self.window.shape_mask(
                 Xshape.SO.Set, Xshape.SK.Bounding,
                 0, 0, mask)
