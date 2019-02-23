@@ -167,52 +167,35 @@ class OverlayWindow:
 
     def draw(self):
         """Draws the window and updates the visibility mask."""
-        COLOR_INVISIBLE = 0
-        COLOR_VISIBLE = 1
-        mask = None
-        mask_gc = None
+        rectangles = []
 
-        try:
-            mask = self.window.create_pixmap(self._width, self._height, 1)
-            mask_gc = mask.create_gc(graphics_exposures=False)
+        pad = self.window.display.info.bitmap_format_scanline_pad
+        unit = self.window.display.info.bitmap_format_scanline_unit
 
-            # make everything invisible
-            mask_gc.change(foreground=COLOR_INVISIBLE)
-            mask.fill_rectangle(mask_gc, 0, 0, self._width, self._height)
+        for placement in self._view.media.values():
+            # x, y are useful names in this case
+            # pylint: disable=invalid-name
+            x, y, width, height, image = \
+                placement.resolve(self._view.offset, self.parent_info)
 
-            pad = self.window.display.info.bitmap_format_scanline_pad
-            unit = self.window.display.info.bitmap_format_scanline_unit
+            rectangles.append((x, y, width, height))
 
-            for placement in self._view.media.values():
-                # x, y are useful names in this case
-                # pylint: disable=invalid-name
-                x, y, width, height, image = \
-                        placement.resolve(self._view.offset, self.parent_info)
+            if not self._view.offset.left == self._view.offset.top == 0:
+                add_overlay_text(
+                    image, 0, 0,
+                    "Multi pane windows aren't supported")
 
-                mask_gc.change(foreground=COLOR_VISIBLE)
-                mask.fill_rectangle(mask_gc, x, y, width, height)
+            stride = roundup(width * unit, pad) >> 3
+            self._image.draw(
+                x, y, width, height,
+                image.tobytes("raw", 'BGRX', stride, 0))
 
-                if not self._view.offset.left == self._view.offset.top == 0:
-                    add_overlay_text(
-                        image, 0, 0,
-                        "Multi pane windows aren't supported")
-
-                stride = roundup(width * unit, pad) >> 3
-                self._image.draw(
-                    x, y, width, height,
-                    image.tobytes("raw", 'BGRX', stride, 0))
-
-            self._image.copy_to(
-                self.window.id,
-                0, 0, self._width, self._height)
-            self.window.shape_mask(
-                Xshape.SO.Set, Xshape.SK.Bounding,
-                0, 0, mask)
-        finally:
-            if mask_gc:
-                mask_gc.free()
-            if mask:
-                mask.free()
+        self._image.copy_to(
+            self.window.id,
+            0, 0, self._width, self._height)
+        self.window.shape_rectangles(
+            Xshape.SO.Set, Xshape.SK.Bounding, 0,
+            0, 0, rectangles)
 
         self._display.flush()
 
@@ -299,26 +282,12 @@ class OverlayWindow:
         of 1x1 pixel by using the XShape extension.
         So nearly the full window is click-through.
         """
-        mask = None
-
-        try:
-            mask = self.window.create_pixmap(1, 1, 1)
-            self.window.shape_mask(
-                Xshape.SO.Set, Xshape.SK.Input,
-                0, 0, mask)
-        finally:
-            if mask:
-                mask.free()
+        self.window.shape_rectangles(
+            Xshape.SO.Set, Xshape.SK.Input, 0,
+            0, 0, [])
 
     def _set_invisible(self):
         """Makes the window invisible."""
-        mask = None
-
-        try:
-            mask = self.window.create_pixmap(1, 1, 1)
-            self.window.shape_mask(
-                Xshape.SO.Set, Xshape.SK.Bounding,
-                0, 0, mask)
-        finally:
-            if mask:
-                mask.free()
+        self.window.shape_rectangles(
+            Xshape.SO.Set, Xshape.SK.Bounding, 0,
+            0, 0, [])
