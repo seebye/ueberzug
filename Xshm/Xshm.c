@@ -201,12 +201,7 @@ Image_draw(Image *self, PyObject *args, PyObject *kwds) {
     destination_offset_x_bytes = max(0, offset_x) * BYTES_PER_PIXEL;
     source_pixels_per_row = width * BYTES_PER_PIXEL;
     destination_pixels_per_row = self->width * BYTES_PER_PIXEL;
-    if (offset_x < 0) {
-        pixels_per_row = min(width + offset_x, self->width) * BYTES_PER_PIXEL;
-    }
-    else {
-        pixels_per_row = min(width, self->width - offset_x) * BYTES_PER_PIXEL;
-    }
+    pixels_per_row = min(width + min(offset_x, 0), self->width - max(offset_x, 0)) * BYTES_PER_PIXEL;
 
     if (offset_x + width > 0 && offset_x < self->width) {
         // < 0 -> start y = 0, min(surface.height, height - abs(offset))
