@@ -15,11 +15,6 @@ import ueberzug.geometry as geometry
 import Xshm
 
 
-class UnsupportedException(Exception):
-    """Exception thrown for unsupported operations."""
-    pass
-
-
 def roundup(value, unit):
     return (value + (unit - 1)) & ~(unit - 1)
 
@@ -33,8 +28,8 @@ def get_visual_id(screen, depth: int):
                            screen.allowed_depths)) \
                .visuals[0].visual_id
     except StopIteration:
-        raise UnsupportedException(
-            'Screen does not support %d depth' % depth)
+        raise ValueError(
+            'Screen does not support depth %d' % depth)
 
 
 class View:
