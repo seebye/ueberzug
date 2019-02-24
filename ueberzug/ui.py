@@ -9,8 +9,6 @@ import Xlib.display as Xdisplay
 import Xlib.ext.shape as Xshape
 import Xlib.protocol.event as Xevent
 import PIL.Image as Image
-import PIL.ImageDraw as ImageDraw
-import PIL.ImageFont as ImageFont
 
 import ueberzug.xutil as xutil
 import ueberzug.geometry as geometry
