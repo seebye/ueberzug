@@ -180,11 +180,6 @@ class OverlayWindow:
 
             rectangles.append((x, y, width, height))
 
-            if not self._view.offset.left == self._view.offset.top == 0:
-                add_overlay_text(
-                    image, 0, 0,
-                    "Multi pane windows aren't supported")
-
             stride = roundup(width * unit, pad) >> 3
             self._image.draw(
                 x, y, width, height,

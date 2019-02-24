@@ -7,7 +7,7 @@ Advantages to w3mimgdisplay:
 - no race conditions as a new window is created to display images
 - expose events will be processed,  
   so images will be redrawn on switch workspaces
-- tmux support
+- tmux support (excluding multi pane windows)
 - terminals without the WINDOWID environment variable are supported
 - chars are used as position - and size unit
 - no memory leak (/ unlimited cache)
