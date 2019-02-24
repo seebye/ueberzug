@@ -27,7 +27,7 @@ class Action(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def apply(self, parser_object, windows, view):
+    async def apply(self, parser_object, windows, view):
         """Executes the action on  the passed view and windows."""
         raise NotImplementedError()
 
@@ -76,10 +76,12 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             return redraw()
         return None
 
-    def apply(self, parser_object, windows, view):
+    async def apply(self, parser_object, windows, view):
         if self.draw:
             if self.synchronously_draw:
                 windows.draw()
+                # force coroutine switch
+                await asyncio.sleep(0)
                 return
 
             function = self.schedule_redraw(windows)
@@ -144,7 +146,7 @@ class AddImageAction(ImageAction):
 
         return image
 
-    def apply(self, parser_object, windows, view):
+    async def apply(self, parser_object, windows, view):
         try:
             old_placement = view.media.get(self.identifier)
             image = old_placement and old_placement.image
@@ -163,7 +165,7 @@ class AddImageAction(ImageAction):
                 self.max_width, self.max_height,
                 self.path, image, last_modified)
         finally:
-            super().apply(parser_object, windows, view)
+            await super().apply(parser_object, windows, view)
 
 
 @attr.s(kw_only=True)
@@ -174,12 +176,12 @@ class RemoveImageAction(ImageAction):
     def get_action_name():
         return 'remove'
 
-    def apply(self, parser_object, windows, view):
+    async def apply(self, parser_object, windows, view):
         try:
             if self.identifier in view.media:
                 del view.media[self.identifier]
         finally:
-            super().apply(parser_object, windows, view)
+            await super().apply(parser_object, windows, view)
 
 
 @enum.unique

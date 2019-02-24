@@ -59,7 +59,7 @@ async def main_commands(loop, shutdown_routine_factory,
             try:
                 data = parser_object.parse(line[:-1])
                 command = action.Command(data['action'])
-                command.action_class(**data) \
+                await command.action_class(**data) \
                     .apply(parser_object, windows, view)
             except (OSError, KeyError, ValueError, TypeError) as error:
                 result.ErrorResult(error) \
