@@ -149,6 +149,7 @@ class AddImageAction(ImageAction):
     async def apply(self, parser_object, windows, view):
         try:
             old_placement = view.media.get(self.identifier)
+            cache = old_placement and old_placement.cache
             image = old_placement and old_placement.image
             last_modified = old_placement and old_placement.last_modified
             current_last_modified = os.path.getmtime(self.path)
@@ -158,12 +159,13 @@ class AddImageAction(ImageAction):
                     or self.path != old_placement.path):
                 last_modified = current_last_modified
                 image = self.load_image(self.path)
+                cache = None
 
             view.media[self.identifier] = ui.OverlayWindow.Placement(
                 self.x, self.y,
                 self.width, self.height,
                 self.max_width, self.max_height,
-                self.path, image, last_modified)
+                self.path, image, last_modified, cache)
         finally:
             await super().apply(parser_object, windows, view)
 

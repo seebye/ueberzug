@@ -1,6 +1,8 @@
 """This module contains user interface related classes and methods.
 """
 import abc
+import weakref
+import attr
 
 import Xlib.X as X
 import Xlib.display as Xdisplay
@@ -70,9 +72,15 @@ class OverlayWindow:
                     for info in window_infos]
 
     class Placement:
+        @attr.s
+        class ResizedImage:
+            size = attr.ib(type=tuple)
+            image = attr.ib(type=bytes)
+
         def __init__(self, x: int, y: int, width: int, height: int,
                      max_width: int, max_height: int,
-                     path: str, image: Image, last_modified: int):
+                     path: str, image: Image, last_modified: int,
+                     cache: weakref.WeakKeyDictionary = None):
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             self.x = x
@@ -84,9 +92,12 @@ class OverlayWindow:
             self.path = path
             self.image = image
             self.last_modified = last_modified
+            self.cache = cache or weakref.WeakKeyDictionary()
 
         def resolve(self, pane_offset: geometry.Distance,
-                    term_info: xutil.TerminalWindowInfo):
+                    term_info: xutil.TerminalWindowInfo,
+                    bitmap_format_scanline_pad,
+                    bitmap_format_scanline_unit):
             """Resolves the position and size of the image
             according to the teminal window information.
 
@@ -94,6 +105,8 @@ class OverlayWindow:
                 tuple of (x: int, y: int, width: int, height: int,
                           resized_image: PIL.Image)
             """
+            resized_image = self.cache.get(term_info)
+            size = None
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             x = ((self.x + pane_offset.left) * term_info.font_width +
@@ -118,10 +131,19 @@ class OverlayWindow:
                 width = width * max_height / height
                 height = max_height
 
-            image = self.image.resize((int(width), int(height)),
-                                      Image.ANTIALIAS)
+            size = (int(width), int(height))
 
-            return int(x), int(y), int(width), int(height), image
+            if resized_image is None or resized_image.size != size:
+                stride = (roundup(int(width) * bitmap_format_scanline_unit,
+                                  bitmap_format_scanline_pad)
+                          >> 3)
+                image = self.image.resize((int(width), int(height)),
+                                          Image.ANTIALIAS)
+                resized_image = self.ResizedImage(
+                    size, image.tobytes("raw", 'BGRX', stride, 0))
+                self.cache[term_info] = resized_image
+
+            return int(x), int(y), int(width), int(height), resized_image.image
 
     def __init__(self, display: Xdisplay.Display,
                  view: View, term_info: xutil.TerminalWindowInfo):
@@ -158,21 +180,17 @@ class OverlayWindow:
         """Draws the window and updates the visibility mask."""
         rectangles = []
 
-        pad = self.window.display.info.bitmap_format_scanline_pad
-        unit = self.window.display.info.bitmap_format_scanline_unit
+        scanline_pad = self.window.display.info.bitmap_format_scanline_pad
+        scanline_unit = self.window.display.info.bitmap_format_scanline_unit
 
         for placement in self._view.media.values():
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             x, y, width, height, image = \
-                placement.resolve(self._view.offset, self.parent_info)
-
+                placement.resolve(self._view.offset, self.parent_info,
+                                  scanline_pad, scanline_unit)
             rectangles.append((x, y, width, height))
-
-            stride = roundup(width * unit, pad) >> 3
-            self._image.draw(
-                x, y, width, height,
-                image.tobytes("raw", 'BGRX', stride, 0))
+            self._image.draw(x, y, width, height, image)
 
         self._image.copy_to(
             self.window.id,
