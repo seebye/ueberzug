@@ -37,17 +37,6 @@ def get_visual_id(screen, depth: int):
             'Screen does not support %d depth' % depth)
 
 
-def add_overlay_text(image: Image, x: int, y: int, text: str,
-                     foreground=(255, 255, 255),
-                     background=(0, 0, 0)):
-    """Draws a text over an image."""
-    default_font = ImageFont.load_default()
-    width, height = default_font.getsize(text)
-    draw = ImageDraw.Draw(image)
-    draw.rectangle(((x, y), (x + width, y + height)), background)
-    draw.text((x, y), text, foreground, default_font)
-
-
 class View:
     """Data class which holds meta data about the screen"""
     def __init__(self):
