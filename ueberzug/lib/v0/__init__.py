@@ -9,6 +9,7 @@ import contextlib
 import attr
 
 import ueberzug.action as _action
+from ueberzug.scaling import ScalerOption
 
 
 class Visibility(enum.Enum):
