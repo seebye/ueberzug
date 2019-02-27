@@ -12,11 +12,12 @@ import PIL.Image as Image
 
 import ueberzug.xutil as xutil
 import ueberzug.geometry as geometry
+import ueberzug.scaling as scaling
 import Xshm
 
 
 def roundup(value, unit):
-    return (value + (unit - 1)) & ~(unit - 1)
+    return ((value + (unit - 1)) & ~(unit - 1)) >> 3
 
 
 def get_visual_id(screen, depth: int):
@@ -66,12 +67,15 @@ class OverlayWindow:
 
     class Placement:
         @attr.s
-        class ResizedImage:
-            size = attr.ib(type=tuple)
-            image = attr.ib(type=bytes)
+        class TransformedImage:
+            """Data class which contains the options an image was transformed with
+            and the image data."""
+            options = attr.ib(type=tuple)
+            data = attr.ib(type=bytes)
 
         def __init__(self, x: int, y: int, width: int, height: int,
-                     max_width: int, max_height: int,
+                     scaling_position: geometry.Point,
+                     scaler: scaling.ImageScaler,
                      path: str, image: Image, last_modified: int,
                      cache: weakref.WeakKeyDictionary = None):
             # x, y are useful names in this case
@@ -79,64 +83,62 @@ class OverlayWindow:
             self.x = x
             self.y = y
             self.width = width
-            self.max_width = max_width
             self.height = height
-            self.max_height = max_height
+            self.scaling_position = scaling_position
+            self.scaler = scaler
             self.path = path
             self.image = image
             self.last_modified = last_modified
             self.cache = cache or weakref.WeakKeyDictionary()
 
+        def transform_image(self, term_info: xutil.TerminalWindowInfo,
+                            width: int, height: int,
+                            format_scanline: tuple):
+            """Scales to image and calculates the width & height needed to display it.
+
+            Returns:
+                tuple of (width: int, height: int, image: bytes)
+            """
+            scanline_pad, scanline_unit = format_scanline
+            transformed_image = self.cache.get(term_info)
+            final_size = self.scaler.calculate_resolution(
+                self.image, width, height)
+            options = self.scaler.get_scaler_name(), final_size
+
+            if (transformed_image is None
+                    or transformed_image.options != options):
+                image = self.scaler.scale(
+                    self.image, self.scaling_position, width, height)
+                stride = roundup(image.width * scanline_unit, scanline_pad)
+                transformed_image = self.TransformedImage(
+                    options, image.tobytes("raw", 'BGRX', stride, 0))
+                self.cache[term_info] = transformed_image
+
+            return (*final_size, transformed_image.data)
+
         def resolve(self, pane_offset: geometry.Distance,
                     term_info: xutil.TerminalWindowInfo,
-                    bitmap_format_scanline_pad,
-                    bitmap_format_scanline_unit):
+                    format_scanline):
             """Resolves the position and size of the image
             according to the teminal window information.
 
             Returns:
                 tuple of (x: int, y: int, width: int, height: int,
-                          resized_image: PIL.Image)
+                          image: PIL.Image)
             """
-            resized_image = self.cache.get(term_info)
-            size = None
             # x, y are useful names in this case
             # pylint: disable=invalid-name
-            x = ((self.x + pane_offset.left) * term_info.font_width +
-                 term_info.padding)
-            y = ((self.y + pane_offset.top) * term_info.font_height +
-                 term_info.padding)
-            width = (self.width * term_info.font_width
-                     if self.width
-                     else self.image.width)
-            height = (self.height * term_info.font_height
-                      if self.height
-                      else self.image.height)
-            max_width = (self.max_width and
-                         (self.max_width * term_info.font_width))
-            max_height = (self.max_height and
-                          (self.max_height * term_info.font_height))
+            x = int((self.x + pane_offset.left) * term_info.font_width +
+                    term_info.padding)
+            y = int((self.y + pane_offset.top) * term_info.font_height +
+                    term_info.padding)
+            width = int(self.width and
+                        (self.width * term_info.font_width))
+            height = int(self.height and
+                         (self.height * term_info.font_height))
 
-            if (max_width and max_width < width):
-                height = height * max_width / width
-                width = max_width
-            if (max_height and max_height < height):
-                width = width * max_height / height
-                height = max_height
-
-            size = (int(width), int(height))
-
-            if resized_image is None or resized_image.size != size:
-                stride = (roundup(int(width) * bitmap_format_scanline_unit,
-                                  bitmap_format_scanline_pad)
-                          >> 3)
-                image = self.image.resize((int(width), int(height)),
-                                          Image.ANTIALIAS)
-                resized_image = self.ResizedImage(
-                    size, image.tobytes("raw", 'BGRX', stride, 0))
-                self.cache[term_info] = resized_image
-
-            return int(x), int(y), int(width), int(height), resized_image.image
+            return (x, y, *self.transform_image(
+                term_info, width, height, format_scanline))
 
     def __init__(self, display: Xdisplay.Display,
                  view: View, term_info: xutil.TerminalWindowInfo):
@@ -181,7 +183,7 @@ class OverlayWindow:
             # pylint: disable=invalid-name
             x, y, width, height, image = \
                 placement.resolve(self._view.offset, self.parent_info,
-                                  scanline_pad, scanline_unit)
+                                  (scanline_pad, scanline_unit))
             rectangles.append((x, y, width, height))
             self._image.draw(x, y, width, height, image)
 

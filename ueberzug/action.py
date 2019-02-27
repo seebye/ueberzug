@@ -6,6 +6,8 @@ import os.path
 import PIL.Image as Image
 import attr
 
+import ueberzug.geometry as geometry
+import ueberzug.scaling as scaling
 import ueberzug.ui as ui
 import ueberzug.conversion as conversion
 
@@ -108,8 +110,13 @@ class AddImageAction(ImageAction):
     y = attr.ib(type=int, converter=int)
     path = attr.ib(type=str)
     width = attr.ib(type=int, converter=int, default=0)
-    max_width = attr.ib(type=int, converter=int, default=0)
     height = attr.ib(type=int, converter=int, default=0)
+    scaling_position_x = attr.ib(type=float, converter=float, default=0)
+    scaling_position_y = attr.ib(type=float, converter=float, default=0)
+    scaler = attr.ib(
+        type=str, default=scaling.ContainImageScaler.get_scaler_name())
+    # deprecated
+    max_width = attr.ib(type=int, converter=int, default=0)
     max_height = attr.ib(type=int, converter=int, default=0)
 
     @staticmethod
@@ -163,8 +170,10 @@ class AddImageAction(ImageAction):
 
             view.media[self.identifier] = ui.OverlayWindow.Placement(
                 self.x, self.y,
-                self.width, self.height,
-                self.max_width, self.max_height,
+                self.max_width or self.width, self.max_height or self.height,
+                geometry.Point(self.scaling_position_x,
+                               self.scaling_position_y),
+                scaling.ScalerOption(self.scaler).scaler_class(),
                 self.path, image, last_modified, cache)
         finally:
             await super().apply(parser_object, windows, view)
