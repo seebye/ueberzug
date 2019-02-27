@@ -28,6 +28,9 @@ Advantages to w3mimgdisplay:
 ## Installation
 
 ```
+$ # uninstall pillow if installed,
+$ # pillow-simd is a lot faster
+$ # unfortunately they use the same module name
 $ sudo pip3 install ueberzug
 ```
 
