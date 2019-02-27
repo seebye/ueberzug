@@ -162,7 +162,9 @@ import ueberzug.lib.v0 as ueberzug
    The transmission of a command can lead to an IOError.  
    (A transmission happens on assign a new value to an attribute of a visible Placement.  
    The transmission is delayed till leaving a with-statement if lazy_drawing is used.)
-3. Canvas:  
+3. ScalerOption:  
+   Enum which contains the useable scaler names.  
+4. Canvas:  
    Should either be used with a with-statement or with a decorated function.  
    (Starts and stops the ueberzug process)
 
