@@ -170,7 +170,7 @@ class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
               width: int, height: int):
         width, height = self.calculate_resolution(image, width, height)
         image_width, image_height = image.width, image.height
-        if image_width > image_height:
+        if width / image_width > height / image_height:
             image_height = int(image_height * width / image_width)
             image_width = width
         else:
