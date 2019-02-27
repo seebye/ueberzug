@@ -1,14 +1,11 @@
 import abc
 import enum
-import asyncio
 import os.path
 
-import PIL.Image as Image
 import attr
 
 import ueberzug.geometry as geometry
 import ueberzug.scaling as scaling
-import ueberzug.ui as ui
 import ueberzug.conversion as conversion
 
 
@@ -80,6 +77,7 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
 
     async def apply(self, parser_object, windows, view):
         if self.draw:
+            import asyncio
             if self.synchronously_draw:
                 windows.draw()
                 # force coroutine switch
@@ -124,16 +122,17 @@ class AddImageAction(ImageAction):
         return 'add'
 
     @staticmethod
-    def load_image(path: str) -> Image:
+    def load_image(path: str):
         """Loads the image and removes the opacity mask.
 
         Args:
             path (str): the path of the image file
 
         Returns:
-            Image: rgb image
+            PIL.Image: rgb image
         """
-        image = Image.open(path)
+        import PIL.Image
+        image = PIL.Image.open(path)
 
         if image.mode == 'P':
             image = image.convert('RGBA')
@@ -141,13 +140,13 @@ class AddImageAction(ImageAction):
         if image.mode in 'RGBA' and len(image.getbands()) == 4:
             image.load()
             image_alpha = image.split()[AddImageAction.INDEX_ALPHA_CHANNEL]
-            image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
+            image_rgb = PIL.Image.new("RGB", image.size, color=(255, 255, 255))
             image_rgb.paste(image, mask=image_alpha)
             image = image_rgb
         else:
             # convert to supported image formats
             image.load()
-            image_rgb = Image.new("RGB", image.size, color=(255, 255, 255))
+            image_rgb = PIL.Image.new("RGB", image.size, color=(255, 255, 255))
             image_rgb.paste(image)
             image = image_rgb
 
@@ -155,6 +154,7 @@ class AddImageAction(ImageAction):
 
     async def apply(self, parser_object, windows, view):
         try:
+            import ueberzug.ui as ui
             old_placement = view.media.get(self.identifier)
             cache = old_placement and old_placement.cache
             image = old_placement and old_placement.image

@@ -1,4 +1,3 @@
-import distutils.util as distutils
 
 
 def to_bool(value):
@@ -10,5 +9,6 @@ def to_bool(value):
     Returns:
         bool: the evaluated boolean
     """
+    import distutils.util
     return (value if isinstance(value, bool)
-            else bool(distutils.strtobool(value)))
+            else bool(distutils.util.strtobool(value)))

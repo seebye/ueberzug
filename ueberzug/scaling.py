@@ -4,8 +4,6 @@ all about scaling images.
 import abc
 import enum
 
-import PIL.Image as Image
-
 import ueberzug.geometry as geometry
 
 
@@ -23,11 +21,11 @@ class ImageScaler(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def calculate_resolution(self, image: Image, width: int, height: int):
+    def calculate_resolution(self, image, width: int, height: int):
         """Calculates the final resolution of the scaled image.
 
         Args:
-            image (Image): the image which should be scaled
+            image (PIL.Image): the image which should be scaled
             width (int): maximum width that can be taken
             height (int): maximum height that can be taken
 
@@ -37,12 +35,12 @@ class ImageScaler(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def scale(self, image: Image, position: geometry.Point,
+    def scale(self, image, position: geometry.Point,
               width: int, height: int):
         """Scales the image according to the respective implementation.
 
         Args:
-            image (Image): the image which should be scaled
+            image (PIL.Image): the image which should be scaled
             position (geometry.Position): the centered position, if possible
                 Specified as factor of the image size,
                 so it should be an element of [0, 1].
@@ -50,7 +48,7 @@ class ImageScaler(metaclass=abc.ABCMeta):
             height (int): maximum height that can be taken
 
         Returns:
-            Image: the scaled image
+            PIL.Image: the scaled image
         """
         raise NotImplementedError()
 
@@ -86,7 +84,7 @@ class MinSizeImageScaler(ImageScaler):
     """
     # pylint: disable=abstract-method
 
-    def calculate_resolution(self, image: Image, width: int, height: int):
+    def calculate_resolution(self, image, width: int, height: int):
         return (min(width or image.width, image.width),
                 min(height or image.height, image.height))
 
@@ -100,7 +98,7 @@ class CropImageScaler(MinSizeImageScaler, OffsetImageScaler):
     def get_scaler_name():
         return "crop"
 
-    def scale(self, image: Image, position: geometry.Point,
+    def scale(self, image, position: geometry.Point,
               width: int, height: int):
         width, height = self.calculate_resolution(image, width, height)
         image_width, image_height = image.width, image.height
@@ -120,13 +118,14 @@ class DistortImageScaler(ImageScaler):
     def get_scaler_name():
         return "distort"
 
-    def calculate_resolution(self, image: Image, width: int, height: int):
+    def calculate_resolution(self, image, width: int, height: int):
         return width or image.width, height or image.height
 
-    def scale(self, image: Image, position: geometry.Point,
+    def scale(self, image, position: geometry.Point,
               width: int, height: int):
+        import PIL.Image
         width, height = self.calculate_resolution(image, width, height)
-        return image.resize((width, height), Image.ANTIALIAS)
+        return image.resize((width, height), PIL.Image.ANTIALIAS)
 
 
 class ContainImageScaler(DistortImageScaler):
@@ -139,7 +138,7 @@ class ContainImageScaler(DistortImageScaler):
     def get_scaler_name():
         return "contain"
 
-    def calculate_resolution(self, image: Image, width: int, height: int):
+    def calculate_resolution(self, image, width: int, height: int):
         image_width, image_height = image.width, image.height
 
         if (width and width < image_width):
@@ -166,8 +165,9 @@ class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
     def get_scaler_name():
         return "forced_cover"
 
-    def scale(self, image: Image, position: geometry.Point,
+    def scale(self, image, position: geometry.Point,
               width: int, height: int):
+        import PIL.Image
         width, height = self.calculate_resolution(image, width, height)
         image_width, image_height = image.width, image.height
         if width / image_width > height / image_height:
@@ -180,7 +180,7 @@ class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
         offset_y = self.get_offset(position.y, height, image_height)
 
         return image \
-            .resize((image_width, image_height), Image.ANTIALIAS) \
+            .resize((image_width, image_height), PIL.Image.ANTIALIAS) \
             .crop((offset_x, offset_y,
                    offset_x + width, offset_y + height))
 
