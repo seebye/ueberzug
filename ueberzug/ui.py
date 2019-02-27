@@ -189,7 +189,9 @@ class OverlayWindow:
 
         self._image.copy_to(
             self.window.id,
-            0, 0, self._width, self._height)
+            0, 0,
+            min(self._width, self._screen.width_in_pixels),
+            min(self._height, self._screen.height_in_pixels))
         self.window.shape_rectangles(
             Xshape.SO.Set, Xshape.SK.Bounding, 0,
             0, 0, rectangles)
