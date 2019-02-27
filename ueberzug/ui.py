@@ -137,9 +137,8 @@ class OverlayWindow:
             height = int(self.height and
                          (self.height * term_info.font_height))
 
-            return (int(x), int(y),
-                    *self.transform_image(
-                        term_info, width, height, format_scanline))
+            return (x, y, *self.transform_image(
+                term_info, width, height, format_scanline))
 
     def __init__(self, display: Xdisplay.Display,
                  view: View, term_info: xutil.TerminalWindowInfo):
