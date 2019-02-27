@@ -266,7 +266,7 @@ Python library:
   if __name__ == '__main__':
       with ueberzug.Canvas() as c:
           paths = ['/some/path/some_image.png', '/some/path/another_image.png']
-          demo = c.create_placement('demo', x=0, y=0)
+          demo = c.create_placement('demo', x=0, y=0, scaler=ueberzug.ScalerOption.COVER.value)
           demo.path = paths[0]
           demo.visibility = ueberzug.Visibility.VISIBLE
   
