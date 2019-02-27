@@ -63,10 +63,24 @@ it will be replaced.
 | path          | String       | path to the image                                                  | No       |
 | width         | Integer      | desired width; original width will be used if not set              | Yes      |
 | height        | Integer      | desired height; original width will be used if not set             | Yes      |
-| max_width     | Integer      | image will be resized (while keeping it's aspect ratio) if it's width is bigger than max width | Yes |
-| max_height    | Integer      | image will be resized (while keeping it's aspect ratio) if it's height is bigger than max height | Yes |
-| draw          | Boolean      | redraw window after adding the image, default True                 | Yes      |
-| synchronously_draw | Boolean | redraw window immediately                                          | Yes      |
+| ~~max_width~~ | Integer      | **Deprecated: replaced by scalers (this behavior is implemented by the default scaler contain)**<br>image will be resized (while keeping it's aspect ratio) if it's width is bigger than max width | Yes | image width |
+| ~~max_height~~| Integer      | **Deprecated: replaced by scalers (this behavior is implemented by the default scaler contain)**<br>image will be resized (while keeping it's aspect ratio) if it's height is bigger than max height | Yes | image height |
+| draw          | Boolean      | redraw window after adding the image, default True                 | Yes      | True    |
+| synchronously_draw | Boolean | redraw window immediately                                          | Yes      | False   |
+| scaler        | String       | name of the image scaler<br>(algorithm which resizes the image to fit into the placement) | Yes      | contain |
+| scaling_position_x | Float   | the centered position, if possible<br>Specified as factor of the image size,<br>so it should be an element of [0, 1]. | Yes      | 0       |
+| scaling_position_y | Float   | analogous to scaling_position_x                                    | Yes      | 0       |
+
+
+ImageScalers:  
+
+| Name          | Description                                                                      |
+|---------------|----------------------------------------------------------------------------------|
+| crop          | Crops out an area of the size of the placement size.                             |
+| distort       | Distorts the image to the placement size.                                        |
+| contain       | Resizes the image to a size <= the placement size while keeping the image ratio. |
+| forced_cover  | Resizes the image to cover the entire area which should be filled<br>while keeping the image ratio.<br>If the image is smaller than the desired size<br>it will be stretched to reach the desired size.<br>If the ratio of the area differs<br>from the image ratio the edges will be cut off. |
+| cover         | The same as forced_cover but images won't be stretched<br>if they are smaller than the area which should be filled. |
 
 #### Remove
 
