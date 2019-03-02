@@ -111,12 +111,6 @@ Image_free_shared_memory(Image *self) {
 }
 
 static PyObject *
-Image_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-    Image *self = (Image*)type->tp_alloc(type, 0);
-    return (PyObject*)self;
-}
-
-static PyObject *
 Image_init(Image *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"width", "height", NULL};
     if (!PyArg_ParseTupleAndKeywords(
@@ -295,7 +289,7 @@ static PyTypeObject ImageType = {
     .tp_basicsize = sizeof(Image),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-    .tp_new = Image_new,
+    .tp_new = PyType_GenericNew,
     .tp_init = (initproc)Image_init,
     .tp_dealloc = (destructor) Image_dealloc,
     .tp_methods = Image_methods,
