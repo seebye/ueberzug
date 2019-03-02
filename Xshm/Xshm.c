@@ -26,7 +26,7 @@
 static Display* display = NULL;
 
 typedef struct {
-    PyObject_HEAD;
+    PyObject_HEAD
     int width;
     int height;
     int buffer_size;
