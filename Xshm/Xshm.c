@@ -13,14 +13,19 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
-#define raise(Exception, message...) { \
+#define Py_INIT_ERROR -1
+#define Py_INIT_SUCCESS 0
+
+#define __raise(return_value, Exception, message...) { \
     char errorMessage[500]; \
     snprintf(errorMessage, 500, message); \
     PyErr_SetString( \
         PyExc_##Exception, \
         errorMessage); \
-    return NULL; \
+    return return_value; \
 }
+#define raise(Exception, message...) __raise(NULL, Exception, message)
+#define raiseInit(Exception, message...) __raise(Py_INIT_ERROR, Exception, message)
 
 
 static Display* display = NULL;
@@ -110,35 +115,35 @@ Image_free_shared_memory(Image *self) {
     }
 }
 
-static PyObject *
+static int
 Image_init(Image *self, PyObject *args, PyObject *kwds) {
     static char *kwlist[] = {"width", "height", NULL};
     if (!PyArg_ParseTupleAndKeywords(
             args, kwds, "ii", kwlist,
             &self->width, &self->height)) {
-        return NULL;
+        return Py_INIT_ERROR;
     }
 
     self->buffer_size = self->width * self->height * BYTES_PER_PIXEL;
 
     if (!init_display()) {
-        raise(OSError, "could not open a connection to the X server");
+        raiseInit(OSError, "could not open a connection to the X server");
     }
     
     if (!Image_init_shared_memory(self)) {
-        raise(OSError, "could not init shared memory");
+        raiseInit(OSError, "could not init shared memory");
     }
 
     if (!Image_map_shared_memory(self)) {
-        raise(OSError, "could not map shared memory");
+        raiseInit(OSError, "could not map shared memory");
     }
 
     if (!Image_create_shared_image(self)) {
         Image_free_shared_memory(self);
-        raise(OSError, "could not allocate the XImage structure");
+        raiseInit(OSError, "could not allocate the XImage structure");
     }
     
-    Py_RETURN_NONE;
+    return Py_INIT_SUCCESS;
 }
 
 static void
