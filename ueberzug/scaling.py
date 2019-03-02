@@ -130,7 +130,7 @@ class DistortImageScaler(ImageScaler):
 
 class ContainImageScaler(DistortImageScaler):
     """Implementation of the ImageScaler
-    which resizes the image to a size <= the maximum size
+    which resizes a larger image to a size <= the maximum size
     while keeping the image ratio.
     """
 
@@ -150,7 +150,31 @@ class ContainImageScaler(DistortImageScaler):
 
         return int(image_width), int(image_height)
 
+    
+class MaxContainImageScaler(DistortImageScaler):
 
+    """Implementation of the ImageScaler
+    which resizes a smaller or larger image to the maximum size
+    within the bounds of the maximum width and height, while
+    keeping the image ratio.
+    """
+
+    @staticmethod
+    def get_scaler_name():
+        return "max_contain"
+    
+    def calculate_resolution(self, image, width: int, height: int):
+        image_width, image_height = image.width, image.height
+
+        if (width and image_width >= image_height):
+            image_height = image_height * width / image_width
+            image_width = width
+        elif (height and image_height >= image_width):
+            image_width = image_width * height / image_height
+            image_height = height
+
+        return int(image_width), int(image_height)
+    
 class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
     """Implementation of the ImageScaler
     which resizes the image to cover the entire area which should be filled
@@ -201,6 +225,7 @@ class ScalerOption(str, enum.Enum):
     DISTORT = DistortImageScaler
     CROP = CropImageScaler
     CONTAIN = ContainImageScaler
+    MAX_CONTAIN = MaxContainImageScaler
     FORCED_COVER = ForcedCoverImageScaler
     COVER = CoverImageScaler
 
