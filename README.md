@@ -80,7 +80,8 @@ ImageScalers:
 |---------------|----------------------------------------------------------------------------------|
 | crop          | Crops out an area of the size of the placement size.                             |
 | distort       | Distorts the image to the placement size.                                        |
-| contain       | Resizes the image to a size <= the placement size while keeping the image ratio. |
+| contain       | Resizes a larger image to a size <= the placement size while keeping the image ratio. |
+| max_contain   | Resizes the image to a size as large as possible within the placement size while keeping the image ratio. |
 | forced_cover  | Resizes the image to cover the entire area which should be filled<br>while keeping the image ratio.<br>If the image is smaller than the desired size<br>it will be stretched to reach the desired size.<br>If the ratio of the area differs<br>from the image ratio the edges will be cut off. |
 | cover         | The same as forced_cover but images won't be stretched<br>if they are smaller than the area which should be filled. |
 
