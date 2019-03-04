@@ -105,7 +105,8 @@ class OverlayWindow:
             transformed_image = self.cache.get(term_info)
             final_size = self.scaler.calculate_resolution(
                 self.image, width, height)
-            options = self.scaler.get_scaler_name(), final_size
+            options = (self.scaler.get_scaler_name(),
+                       self.scaling_position, final_size)
 
             if (transformed_image is None
                     or transformed_image.options != options):
