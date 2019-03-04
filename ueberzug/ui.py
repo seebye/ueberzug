@@ -68,7 +68,8 @@ class OverlayWindow:
     class Placement:
         @attr.s
         class TransformedImage:
-            """Data class which contains the options an image was transformed with
+            """Data class which contains the options
+            an image was transformed with
             and the image data."""
             options = attr.ib(type=tuple)
             data = attr.ib(type=bytes)
@@ -94,7 +95,8 @@ class OverlayWindow:
         def transform_image(self, term_info: xutil.TerminalWindowInfo,
                             width: int, height: int,
                             format_scanline: tuple):
-            """Scales to image and calculates the width & height needed to display it.
+            """Scales to image and calculates
+            the width & height needed to display it.
 
             Returns:
                 tuple of (width: int, height: int, image: bytes)
