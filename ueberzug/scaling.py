@@ -85,8 +85,8 @@ class MinSizeImageScaler(ImageScaler):
     # pylint: disable=abstract-method
 
     def calculate_resolution(self, image, width: int, height: int):
-        return (min(width or image.width, image.width),
-                min(height or image.height, image.height))
+        return (min(width, image.width),
+                min(height, image.height))
 
 
 class CropImageScaler(MinSizeImageScaler, OffsetImageScaler):
@@ -119,7 +119,7 @@ class DistortImageScaler(ImageScaler):
         return "distort"
 
     def calculate_resolution(self, image, width: int, height: int):
-        return width or image.width, height or image.height
+        return width, height
 
     def scale(self, image, position: geometry.Point,
               width: int, height: int):

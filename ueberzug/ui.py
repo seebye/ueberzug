@@ -132,10 +132,11 @@ class OverlayWindow:
                     term_info.padding)
             y = int((self.y + pane_offset.top) * term_info.font_height +
                     term_info.padding)
-            width = int(self.width and
-                        (self.width * term_info.font_width))
-            height = int(self.height and
-                         (self.height * term_info.font_height))
+            width = int((self.width and (self.width * term_info.font_width))
+                        or self.image.width)
+            height = \
+                int((self.height and (self.height * term_info.font_height))
+                    or self.image.height)
 
             return (x, y, *self.transform_image(
                 term_info, width, height, format_scanline))
