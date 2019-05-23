@@ -42,7 +42,8 @@ class TerminalInfo:
         self.pty = pty
         self.font_width = None
         self.font_height = None
-        self.padding = None
+        self.padding_vertical = None
+        self.padding_horizontal = None
 
     def calculate_sizes(self, fallback_width, fallback_height):
         """Calculates the values for font_{width,height} and
@@ -60,14 +61,34 @@ class TerminalInfo:
         ypixels = ypixels or fallback_height
         padding_horizontal = self.__guess_padding(cols, xpixels)
         padding_vertical = self.__guess_padding(rows, ypixels)
-        self.padding = max(padding_horizontal, padding_vertical)
-        self.font_width = self.__guess_font_size(cols, xpixels, self.padding)
-        self.font_height = self.__guess_font_size(rows, ypixels, self.padding)
+        self.padding_horizontal = max(padding_horizontal, padding_vertical)
+        self.padding_vertical = self.padding_horizontal
+        self.font_width = self.__guess_font_size(
+            cols, xpixels, self.padding_horizontal)
+        self.font_height = self.__guess_font_size(
+            rows, ypixels, self.padding_vertical)
 
         if xpixels < fallback_width and ypixels < fallback_height:
             # some terminal emulators return the size of the text area
             # instead of the size of the whole window
-            self.padding = 1/2 * min(fallback_width - xpixels,
-                                     fallback_height - ypixels)
+            # -----
+            # we're still missing information
+            # e.g.:
+            #   we know the size of the text area but
+            #   we still don't know the margin of the text area to the edges
+            #   (a character has a specific size so:
+            #    there's some additional varying space
+            #    if the character size isn't a divider of
+            #    (window size - padding))
+            #   -> it's okay not to know it
+            #      if the terminal emulator centers the text area
+            #      (kitty seems to do that)
+            #   -> it's not okay not to know it
+            #      if the terminal emulator just
+            #      adds the additional space to the right margin
+            #      (which will most likely be done)
+            #      (stterm seems to do that)
+            self.padding_horizontal = 1/2 * (fallback_width - xpixels)
+            self.padding_vertical = 1/2 * (fallback_height - ypixels)
             self.font_width = xpixels / cols
             self.font_height = ypixels / rows

@@ -132,9 +132,9 @@ class OverlayWindow:
             # x, y are useful names in this case
             # pylint: disable=invalid-name
             x = int((self.x + pane_offset.left) * term_info.font_width +
-                    term_info.padding)
+                    term_info.padding_horizontal)
             y = int((self.y + pane_offset.top) * term_info.font_height +
-                    term_info.padding)
+                    term_info.padding_vertical)
             width = int((self.width and (self.width * term_info.font_width))
                         or self.image.width)
             height = \
