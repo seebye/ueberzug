@@ -158,7 +158,6 @@ class OverlayWindow:
         self.parent_info = term_info
         self.parent_window = None
         self.window = None
-        self._window_gc = None
         self._view = view
         self._width = 1
         self._height = 1
@@ -204,7 +203,7 @@ class OverlayWindow:
 
     def create(self):
         """Creates the window and gc"""
-        if self._window_gc:
+        if self.window:
             return
 
         visual_id = get_visual_id(self._screen, OverlayWindow.SCREEN_DEPTH)
@@ -233,7 +232,6 @@ class OverlayWindow:
             event_mask=X.ExposureMask)
         self.parent_window.change_attributes(
             event_mask=X.StructureNotifyMask)
-        self._window_gc = self.window.create_gc()
         self._set_click_through()
         self._set_invisible()
         self._display.flush()
@@ -268,9 +266,6 @@ class OverlayWindow:
 
     def destroy(self):
         """Destroys the window and it's resources"""
-        if self._window_gc:
-            self._window_gc.free()
-            self._window_gc = None
         if self.window:
             self.window.unmap()
             self.window.destroy()
