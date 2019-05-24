@@ -14,6 +14,7 @@ Advantages to w3mimgdisplay:
 
 ## Overview
 
+- [Dependencies](#dependencies)
 - [Installation](#installation)
 - [Communication](#communication)  
   * [Command formats](#command-formats)
@@ -24,6 +25,18 @@ Advantages to w3mimgdisplay:
     + [Bash](#bash)
     + [Python](#python)
   * [Examples](#examples)
+
+
+## Dependencies
+
+Libraries used in the c extension:  
+
+- python
+- X11
+- Xext
+
+There are also other direct dependencies,  
+but they will be installed by pip.
 
 ## Installation
 
