@@ -103,6 +103,13 @@ async def query_windows(window_factory, windows, view):
         windows.draw()
 
 
+async def reset_terminal_info(windows):
+    """Signal handler for SIGWINCH.
+    Resets the terminal information of all windows.
+    """
+    windows.reset_terminal_info()
+
+
 async def shutdown(loop):
     tasks = [task for task in asyncio.Task.all_tasks()
              if task is not asyncio.tasks.Task.current_task()]
@@ -198,6 +205,11 @@ def main_layer(options):
             signal.SIGUSR1,
             lambda: asyncio.ensure_future(query_windows(
                 window_factory, windows, view)))
+
+        loop.add_signal_handler(
+            signal.SIGWINCH,
+            lambda: asyncio.ensure_future(
+                reset_terminal_info(windows)))
 
         asyncio.ensure_future(main_xevents(loop, display, windows))
         asyncio.ensure_future(main_commands(

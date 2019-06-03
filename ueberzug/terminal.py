@@ -45,6 +45,21 @@ class TerminalInfo:
         self.padding_vertical = None
         self.padding_horizontal = None
 
+    @property
+    def ready(self):
+        """bool: True if the information
+        of every attribute has been calculated.
+        """
+        return all((self.font_width, self.font_height,
+                    self.padding_vertical, self.padding_horizontal))
+
+    def reset(self):
+        """Resets the font size and padding."""
+        self.font_width = None
+        self.font_height = None
+        self.padding_vertical = None
+        self.padding_horizontal = None
+
     def calculate_sizes(self, fallback_width, fallback_height):
         """Calculates the values for font_{width,height} and
         padding_{horizontal,vertical}.
