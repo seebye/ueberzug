@@ -181,6 +181,10 @@ class OverlayWindow:
         scanline_pad = self.window.display.info.bitmap_format_scanline_pad
         scanline_unit = self.window.display.info.bitmap_format_scanline_unit
 
+        if not self.parent_info.ready:
+            self.parent_info.calculate_sizes(
+                self._width, self._height)
+
         for placement in self._view.media.values():
             # x, y are useful names in this case
             # pylint: disable=invalid-name
@@ -216,8 +220,6 @@ class OverlayWindow:
             parent_window = display.create_resource_object(
                 'window', self.parent_info.window_id)
             parent_size = parent_window.get_geometry()
-            self.parent_info.calculate_sizes(
-                parent_size.width, parent_size.height)
         self._width, self._height = parent_size.width, parent_size.height
 
         self.window = self.parent_window.create_window(
@@ -235,6 +237,10 @@ class OverlayWindow:
         self._set_click_through()
         self._set_invisible()
         self._display.flush()
+
+    def reset_terminal_info(self):
+        """Resets the terminal information of this window."""
+        self.parent_info.reset()
 
     def process_event(self, event):
         if (isinstance(event, Xevent.Expose) and
