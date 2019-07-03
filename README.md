@@ -40,10 +40,17 @@ but they will be installed by pip.
 
 ## Installation
 
-```
-$ # make sure to use pillow-simd instead of pillow
-$ # as it's a lot faster
+```bash
 $ sudo pip3 install ueberzug
+```
+
+Ueberzug uses pillow-simd instead of pillow,  
+but pillow-simd won't run on every hardware.  
+So if you experience e.g. a Segmentation fault 
+you can try to use ueberzug with pillow.  
+```bash
+$ sudo pip3 uninstall pillow-simd
+$ sudo pip3 install pillow
 ```
 
 ## Communication
