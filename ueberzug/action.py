@@ -155,7 +155,7 @@ class AddImageAction(ImageAction):
     async def apply(self, parser_object, windows, view):
         try:
             import ueberzug.ui as ui
-            old_placement = view.media.get(self.identifier)
+            old_placement = view.media.pop(self.identifier, None)
             cache = old_placement and old_placement.cache
             image = old_placement and old_placement.image
             last_modified = old_placement and old_placement.last_modified
