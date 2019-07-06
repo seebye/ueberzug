@@ -305,5 +305,6 @@ Python library:
 
 Scripts:
 
+- fzf with image preview: https://github.com/seebye/ueberzug/blob/master/examples/fzfimg.sh
 - Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
 - **F**zf **M**pd **U**ser **I**nterface: https://github.com/seebye/fmui
