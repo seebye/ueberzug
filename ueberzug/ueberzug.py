@@ -135,7 +135,8 @@ def setup_tmux_hooks():
     events = (
         'client-session-changed',
         'session-window-changed',
-        'pane-mode-changed'
+        'pane-mode-changed',
+        'client-detached'
     )
     lock_directory_path = pathlib.PosixPath(tempfile.gettempdir()) / 'ueberzug'
     lock_file_path = lock_directory_path / tmux_util.get_session_id()
