@@ -89,7 +89,7 @@ function print_on_winch {
                 };
                 sleep;
             }' \
-            "$@"
+            "$@" &
 }
 
 
@@ -97,7 +97,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     trap finalise EXIT
     # print the redraw key twice as there's a run condition we can't circumvent
     # (we can't know the time fzf finished redrawing it's layout)
-    print_on_winch "${REDRAW_KEY}${REDRAW_KEY}" &
+    print_on_winch "${REDRAW_KEY}${REDRAW_KEY}"
     start_ueberzug
 
     export -f on_selection_changed calculate_position
