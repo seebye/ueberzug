@@ -24,17 +24,22 @@ declare -r -x PREVIEW_WIDTH="70%"
 
 
 function start_ueberzug {
-    mkfifo "$UEBERZUG_FIFO"
-    ueberzug layer --parser bash --silent <"$UEBERZUG_FIFO" &
+    mkfifo "${UEBERZUG_FIFO}"
+    <"${UEBERZUG_FIFO}" \
+        ueberzug layer --parser bash --silent &
     # prevent EOF
-    exec 3>"$UEBERZUG_FIFO"
+    3>"${UEBERZUG_FIFO}" \
+        exec
 }
 
 
 function finalise {
-    exec 3>&-
-    rm "$UEBERZUG_FIFO" &>/dev/null
-    kill $(jobs -p)
+    3>&- \
+        exec
+    &>/dev/null \
+        rm "${UEBERZUG_FIFO}"
+    &>/dev/null \
+        kill $(jobs -p)
 }
 
 
@@ -47,7 +52,7 @@ function calculate_position {
     < <(</dev/tty stty size) \
         read TERMINAL_LINES TERMINAL_COLUMNS
 
-    case "$PREVIEW_POSITION" in
+    case "${PREVIEW_POSITION}" in
         left|up|top)
             X=1
             Y=1
@@ -69,10 +74,10 @@ function on_selection_changed {
 
     >"${UEBERZUG_FIFO}" declare -A -p cmd=( \
         [action]=add [identifier]="${PREVIEW_ID}" \
-        [x]="$X" [y]="$Y" \
-        [width]="$COLUMNS" [height]="$LINES" \
+        [x]="${X}" [y]="${Y}" \
+        [width]="${COLUMNS}" [height]="${LINES}" \
         [scaler]=forced_cover [scaling_position_x]=0.5 [scaling_position_y]=0.5 \
-        [path]="$@")
+        [path]="${@}")
         # add [synchronously_draw]=True if you want to see each change
 }
 
@@ -89,7 +94,7 @@ function print_on_winch {
                 };
                 sleep;
             }' \
-            "$@" &
+            "${@}" &
 }
 
 
@@ -101,8 +106,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     start_ueberzug
 
     export -f on_selection_changed calculate_position
-    SHELL="$BASH_BINARY" \
+    SHELL="${BASH_BINARY}" \
         fzf --preview "on_selection_changed {}" \
             --preview-window "${PREVIEW_POSITION}:${PREVIEW_WIDTH}" \
-            --bind "$REDRAW_KEY":"$REDRAW_COMMAND"
+            --bind "${REDRAW_KEY}:${REDRAW_COMMAND}"
 fi
