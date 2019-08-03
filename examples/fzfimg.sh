@@ -16,11 +16,42 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 readonly BASH_BINARY="$(which bash)"
 readonly REDRAW_COMMAND="toggle-preview+toggle-preview"
-declare -r -x REDRAW_KEY="µ"
+readonly REDRAW_KEY="µ"
+declare -r -x DEFAULT_PREVIEW_POSITION="right"
 declare -r -x UEBERZUG_FIFO="$(mktemp --dry-run --suffix "fzf-$$-ueberzug")"
 declare -r -x PREVIEW_ID="preview"
-declare -r -x PREVIEW_POSITION="right"
-declare -r -x PREVIEW_WIDTH="70%"
+
+
+function is_option_key [[ "${@}" =~ ^(\-.*|\+.*) ]]
+function is_key_value [[ "${@}" == *=* ]]
+
+
+function map_options {
+    local -n options="${1}"
+    local -n options_map="${2}"
+
+    for ((i=0; i < ${#options[@]}; i++)); do
+        local key="${options[$i]}" next_key="${options[$((i + 1))]:---}"
+        local value=true
+        is_option_key "${key}" || \
+            continue
+        if is_key_value "${key}"; then
+            <<<"${key}" \
+                IFS='=' read key value
+        elif ! is_option_key "${next_key}"; then
+            value="${next_key}"
+        fi
+        options_map["${key}"]="${value}"
+    done
+}
+
+
+function parse_options {
+    declare -g -a script_options=("${@}")
+    declare -g -A mapped_options
+    map_options script_options mapped_options
+    declare -g -r -x PREVIEW_POSITION="${mapped_options[--preview-window]%%:[^:]*}"
+}
 
 
 function start_ueberzug {
@@ -52,7 +83,7 @@ function calculate_position {
     < <(</dev/tty stty size) \
         read TERMINAL_LINES TERMINAL_COLUMNS
 
-    case "${PREVIEW_POSITION}" in
+    case "${PREVIEW_POSITION:-${DEFAULT_PREVIEW_POSITION}}" in
         left|up|top)
             X=1
             Y=1
@@ -69,7 +100,7 @@ function calculate_position {
 }
 
 
-function on_selection_changed {
+function draw_preview {
     calculate_position
 
     >"${UEBERZUG_FIFO}" declare -A -p cmd=( \
@@ -100,14 +131,16 @@ function print_on_winch {
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     trap finalise EXIT
+    parse_options "${@}"
     # print the redraw key twice as there's a run condition we can't circumvent
     # (we can't know the time fzf finished redrawing it's layout)
     print_on_winch "${REDRAW_KEY}${REDRAW_KEY}"
     start_ueberzug
 
-    export -f on_selection_changed calculate_position
+    export -f draw_preview calculate_position
     SHELL="${BASH_BINARY}" \
-        fzf --preview "on_selection_changed {}" \
-            --preview-window "${PREVIEW_POSITION}:${PREVIEW_WIDTH}" \
-            --bind "${REDRAW_KEY}:${REDRAW_COMMAND}"
+        fzf --preview "draw_preview {}" \
+            --preview-window "${DEFAULT_PREVIEW_POSITION}" \
+            --bind "${REDRAW_KEY}:${REDRAW_COMMAND}" \
+            "${@}"
 fi
