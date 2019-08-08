@@ -16,14 +16,14 @@ import ueberzug.result as result
 import ueberzug.tmux_util as tmux_util
 
 
-async def main_xevents(loop, display, windows):
+async def process_xevents(loop, display, windows):
     """Coroutine which processes X11 events"""
     async for event in xutil.Events(loop, display):
         windows.process_event(event)
 
 
-async def main_commands(loop, shutdown_routine_factory,
-                        parser_object, windows, view):
+async def process_commands(loop, shutdown_routine_factory,
+                           parser_object, windows, view):
     """Coroutine which processes the input of stdin"""
     try:
         async for line in files.LineReader(loop, sys.stdin):
@@ -186,8 +186,8 @@ def main(options):
             lambda: asyncio.ensure_future(
                 reset_terminal_info(windows)))
 
-        asyncio.ensure_future(main_xevents(loop, display, windows))
-        asyncio.ensure_future(main_commands(
+        asyncio.ensure_future(process_xevents(loop, display, windows))
+        asyncio.ensure_future(process_commands(
             loop, shutdown_factory(loop), parser_class(),
             windows, view))
 
