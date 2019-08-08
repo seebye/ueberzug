@@ -1,26 +1,3 @@
-#!/usr/bin/env python3
-"""Usage:
-    ueberzug ROUTINE [options]
-
-Routines:
-    layer                   Display images
-    library                 Prints the path to the bash library
-
-Image options:
-    -p, --parser <parser>  one of json, simple, bash
-                           json: Json-Object per line
-                           simple: Key-Values separated by a tab
-                           bash: associative array dumped via `declare -p`
-                           [default: json]
-    -s, --silent           print stderr to /dev/null
-
-
-License:
-    ueberzug  Copyright (C) 2018  Nico Baeurer
-    This program comes with ABSOLUTELY NO WARRANTY.
-    This is free software, and you are welcome to redistribute it
-    under certain conditions.
-"""
 import atexit
 import sys
 import os
@@ -28,8 +5,6 @@ import asyncio
 import signal
 import pathlib
 import tempfile
-
-import docopt
 
 import ueberzug.thread as thread
 import ueberzug.files as files
@@ -178,7 +153,7 @@ def setup_tmux_hooks():
     return remove_hooks
 
 
-def main_layer(options):
+def main(options):
     display = xutil.get_display()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
@@ -222,23 +197,3 @@ def main_layer(options):
         finally:
             loop.close()
             executor.shutdown(wait=False)
-
-
-def main_library():
-    directory = \
-        pathlib.PosixPath(os.path.abspath(os.path.dirname(__file__))) / 'lib'
-    print((directory / 'lib.sh').as_posix())
-
-
-def main():
-    options = docopt.docopt(__doc__)
-    routine = options['ROUTINE']
-
-    if routine == 'layer':
-        main_layer(options)
-    elif routine == 'library':
-        main_library()
-
-
-if __name__ == '__main__':
-    main()

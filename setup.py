@@ -27,7 +27,7 @@ setuptools.setup(
     },
     entry_points={
         'console_scripts': [
-            'ueberzug=ueberzug.ueberzug:main'
+            'ueberzug=ueberzug.__main__:main'
         ]
     },
     ext_modules=[
