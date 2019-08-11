@@ -4,6 +4,7 @@ import os
 import asyncio
 import signal
 import tempfile
+import pathlib
 
 import ueberzug.thread as thread
 import ueberzug.files as files
