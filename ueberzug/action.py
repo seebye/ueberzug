@@ -26,7 +26,7 @@ class Action(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    async def apply(self, parser_object, windows, view):
+    async def apply(self, windows, view, tools):
         """Executes the action on  the passed view and windows."""
         raise NotImplementedError()
 
@@ -75,7 +75,7 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
             return redraw()
         return None
 
-    async def apply(self, parser_object, windows, view):
+    async def apply(self, windows, view, tools):
         if self.draw:
             import asyncio
             if self.synchronously_draw:
@@ -102,7 +102,6 @@ class AddImageAction(ImageAction):
     If there's already an image with the given identifier
     it's going to be replaced.
     """
-    INDEX_ALPHA_CHANNEL = 3
 
     x = attr.ib(type=int, converter=int)
     y = attr.ib(type=int, converter=int)
@@ -121,38 +120,7 @@ class AddImageAction(ImageAction):
     def get_action_name():
         return 'add'
 
-    @staticmethod
-    def load_image(path: str):
-        """Loads the image and removes the opacity mask.
-
-        Args:
-            path (str): the path of the image file
-
-        Returns:
-            PIL.Image: rgb image
-        """
-        import PIL.Image
-        image = PIL.Image.open(path)
-
-        if image.mode == 'P':
-            image = image.convert('RGBA')
-
-        if image.mode in 'RGBA' and len(image.getbands()) == 4:
-            image.load()
-            image_alpha = image.split()[AddImageAction.INDEX_ALPHA_CHANNEL]
-            image_rgb = PIL.Image.new("RGB", image.size, color=(255, 255, 255))
-            image_rgb.paste(image, mask=image_alpha)
-            image = image_rgb
-        else:
-            # convert to supported image formats
-            image.load()
-            image_rgb = PIL.Image.new("RGB", image.size, color=(255, 255, 255))
-            image_rgb.paste(image)
-            image = image_rgb
-
-        return image
-
-    async def apply(self, parser_object, windows, view):
+    async def apply(self, windows, view, tools):
         try:
             import ueberzug.ui as ui
             old_placement = view.media.pop(self.identifier, None)
@@ -165,7 +133,7 @@ class AddImageAction(ImageAction):
                     or last_modified < current_last_modified
                     or self.path != old_placement.path):
                 last_modified = current_last_modified
-                image = self.load_image(self.path)
+                image = tools.loader.load(self.path)
                 cache = None
 
             view.media[self.identifier] = ui.OverlayWindow.Placement(
@@ -176,7 +144,7 @@ class AddImageAction(ImageAction):
                 scaling.ScalerOption(self.scaler).scaler_class(),
                 self.path, image, last_modified, cache)
         finally:
-            await super().apply(parser_object, windows, view)
+            await super().apply(windows, view, tools)
 
 
 @attr.s(kw_only=True)
@@ -187,12 +155,12 @@ class RemoveImageAction(ImageAction):
     def get_action_name():
         return 'remove'
 
-    async def apply(self, parser_object, windows, view):
+    async def apply(self, windows, view, tools):
         try:
             if self.identifier in view.media:
                 del view.media[self.identifier]
         finally:
-            await super().apply(parser_object, windows, view)
+            await super().apply(windows, view, tools)
 
 
 @enum.unique

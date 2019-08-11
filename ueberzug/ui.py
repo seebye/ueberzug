@@ -33,13 +33,6 @@ def get_visual_id(screen, depth: int):
             'Screen does not support depth %d' % depth)
 
 
-class View:
-    """Data class which holds meta data about the screen"""
-    def __init__(self):
-        self.offset = geometry.Distance()
-        self.media = {}
-
-
 class WindowFactory:
     """Window factory class"""
     def __init__(self, display):
@@ -101,17 +94,18 @@ class OverlayWindow:
             Returns:
                 tuple of (width: int, height: int, image: bytes)
             """
+            image = self.image.await_image()
             scanline_pad, scanline_unit = format_scanline
             transformed_image = self.cache.get(term_info)
             final_size = self.scaler.calculate_resolution(
-                self.image, width, height)
+                image, width, height)
             options = (self.scaler.get_scaler_name(),
                        self.scaling_position, final_size)
 
             if (transformed_image is None
                     or transformed_image.options != options):
                 image = self.scaler.scale(
-                    self.image, self.scaling_position, width, height)
+                    image, self.scaling_position, width, height)
                 stride = roundup(image.width * scanline_unit, scanline_pad)
                 transformed_image = self.TransformedImage(
                     options, image.tobytes("raw", 'BGRX', stride, 0))
@@ -131,21 +125,22 @@ class OverlayWindow:
             """
             # x, y are useful names in this case
             # pylint: disable=invalid-name
+            image = self.image.await_image()
             x = int((self.x + pane_offset.left) * term_info.font_width +
                     term_info.padding_horizontal)
             y = int((self.y + pane_offset.top) * term_info.font_height +
                     term_info.padding_vertical)
             width = int((self.width and (self.width * term_info.font_width))
-                        or self.image.width)
+                        or image.width)
             height = \
                 int((self.height and (self.height * term_info.font_height))
-                    or self.image.height)
+                    or image.height)
 
             return (x, y, *self.transform_image(
                 term_info, width, height, format_scanline))
 
     def __init__(self, display: Xdisplay.Display,
-                 view: View, term_info: xutil.TerminalWindowInfo):
+                 view, term_info: xutil.TerminalWindowInfo):
         """Changes the foreground color of the gc object.
 
         Args:

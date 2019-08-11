@@ -13,8 +13,9 @@ import ueberzug.parser as parser
 import ueberzug.ui as ui
 import ueberzug.batch as batch
 import ueberzug.action as action
-import ueberzug.result as result
 import ueberzug.tmux_util as tmux_util
+import ueberzug.geometry as geometry
+import ueberzug.loading as loading
 
 
 async def process_xevents(loop, display, windows):
@@ -24,7 +25,7 @@ async def process_xevents(loop, display, windows):
 
 
 async def process_commands(loop, shutdown_routine_factory,
-                           parser_object, windows, view):
+                           windows, view, tools):
     """Coroutine which processes the input of stdin"""
     try:
         async for line in files.LineReader(loop, sys.stdin):
@@ -32,13 +33,12 @@ async def process_commands(loop, shutdown_routine_factory,
                 break
 
             try:
-                data = parser_object.parse(line[:-1])
+                data = tools.parser.parse(line[:-1])
                 command = action.Command(data['action'])
                 await command.action_class(**data) \
-                    .apply(parser_object, windows, view)
+                    .apply(windows, view, tools)
             except (OSError, KeyError, ValueError, TypeError) as error:
-                result.ErrorResult(error) \
-                    .print(parser_object)
+                tools.error_handler(error)
     finally:
         asyncio.ensure_future(shutdown_routine_factory())
 
@@ -153,15 +153,50 @@ def setup_tmux_hooks():
     return remove_hooks
 
 
+def error_processor_factory(parser):
+    def wrapper(exception):
+        return process_error(parser, exception)
+    return wrapper
+
+
+def process_error(parser, exception):
+    print(parser.unparse({
+        'type': 'error',
+        'name': type(exception).__name__,
+        'message': str(exception),
+        # 'stack': traceback.format_exc()
+    }), file=sys.stderr)
+
+
+class View:
+    """Data class which holds meta data about the screen"""
+    def __init__(self):
+        self.offset = geometry.Distance()
+        self.media = {}
+
+
+class Tools:
+    """Data class which holds helper functions, ..."""
+    def __init__(self, loader, parser, error_handler):
+        self.loader = loader
+        self.parser = parser
+        self.error_handler = error_handler
+
+
 def main(options):
     display = xutil.get_display()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
     parser_class = parser.ParserOption(options['--parser']).parser_class
-    view = ui.View()
+    image_loader = loading.ThreadImageLoader()
+    parser_object = parser_class()
+    error_handler = error_processor_factory(parser_object)
+    view = View()
+    tools = Tools(image_loader, parser_object, error_handler)
     window_factory = ui.OverlayWindow.Factory(display, view)
     windows = batch.BatchList(window_factory.create(*window_infos))
+    image_loader.register_error_handler(error_handler)
 
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
@@ -189,8 +224,8 @@ def main(options):
 
         asyncio.ensure_future(process_xevents(loop, display, windows))
         asyncio.ensure_future(process_commands(
-            loop, shutdown_factory(loop), parser_class(),
-            windows, view))
+            loop, shutdown_factory(loop),
+            windows, view, tools))
 
         try:
             loop.run_forever()
