@@ -16,7 +16,7 @@ Layer options:
                            synchronous: load images right away
                            thread: load images in threads
                            process: load images in additional processes
-                           [default: thread]
+                           [default: process]
     -s, --silent           print stderr to /dev/null
 
 
