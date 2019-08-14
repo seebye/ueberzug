@@ -10,6 +10,7 @@ import attr
 
 import ueberzug.action as _action
 from ueberzug.scaling import ScalerOption
+from ueberzug.loading import ImageLoaderOption
 
 
 class Visibility(enum.Enum):
@@ -301,7 +302,10 @@ class Canvas:
     """The class which represents the drawing area."""
 
     def __init__(self, debug=False):
-        self.__process_arguments = [] if debug else ['--silent']
+        self.__process_arguments = (
+            ['--loader', ImageLoaderOption.SYNCHRONOUS.value]
+            if debug else
+            ['--silent'])
         self.__process = None
         self.__transmitter = None
         self.__used_identifiers = set()

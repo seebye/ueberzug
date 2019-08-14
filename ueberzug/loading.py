@@ -93,6 +93,12 @@ class ImageLoader(metaclass=abc.ABCMeta):
         import PIL.Image
         return PIL.Image.new('RGB', (1, 1))
 
+    @staticmethod
+    @abc.abstractmethod
+    def get_loader_name():
+        """Returns the constant name which is associated to this loader."""
+        raise NotImplementedError()
+
     def __init__(self):
         self.error_handler = None
 
@@ -142,6 +148,10 @@ class SynchronousImageLoader(ImageLoader):
     which loads images right away in the same thread
     it was requested to load the image.
     """
+    @staticmethod
+    def get_loader_name():
+        return "synchronous"
+
     def load(self, path, upper_bound_size):
         image = None
 
@@ -302,6 +312,10 @@ class ThreadImageLoader(AsynchronousImageLoader):
     """Implementation of AsynchronImageLoader
     which loads images in multiple threads.
     """
+    @staticmethod
+    def get_loader_name():
+        return "thread"
+
     def __init__(self):
         super().__init__()
         threads = os.cpu_count()
@@ -327,6 +341,10 @@ class ProcessImageLoader(ThreadImageLoader):
     Therefore it allows to utilise all cpu cores
     for decoding an image.
     """
+    @staticmethod
+    def get_loader_name():
+        return "process"
+
     def __init__(self):
         super().__init__()
         self.__executor_loader = concurrent.futures.ProcessPoolExecutor(
@@ -341,3 +359,21 @@ class ProcessImageLoader(ThreadImageLoader):
         future = self.__executor_loader.submit(
             load_image, path, upper_bound_size)
         return future.result()
+
+
+@enum.unique
+class ImageLoaderOption(str, enum.Enum):
+    """Enum which lists the useable ImageLoader classes."""
+    SYNCHRONOUS = SynchronousImageLoader
+    THREAD = ThreadImageLoader
+    PROCESS = ProcessImageLoader
+
+    def __new__(cls, loader_class):
+        inst = str.__new__(cls)
+        # Based on an official example
+        # https://docs.python.org/3/library/enum.html#using-a-custom-new
+        # So.. stfu pylint
+        # pylint: disable=protected-access
+        inst._value_ = loader_class.get_loader_name()
+        inst.loader_class = loader_class
+        return inst
