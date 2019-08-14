@@ -190,6 +190,7 @@ def main(options):
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
     parser_class = parser.ParserOption(options['--parser']).parser_class
     image_loader = loading.ThreadImageLoader()
+    image_loader = loading.ProcessImageLoader()
     parser_object = parser_class()
     error_handler = error_processor_factory(parser_object)
     view = View()

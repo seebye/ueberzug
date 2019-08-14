@@ -4,32 +4,44 @@ import weakref
 import os
 import threading
 import concurrent.futures
+import enum
 
 import PIL.Image
 import ueberzug.thread as thread
 
 
-def load_image(path):
+def load_image(path, upper_bound_size):
     """Loads the image and converts it
     if it doesn't use the RGB or RGBX mode.
 
     Args:
         path (str): the path of the image file
+        upper_bound_size (tuple of (width: int, height: int)):
+            the maximal size to load data for
 
     Returns:
-        PIL.Image: rgb image
+        tuple of (PIL.Image, bool): rgb image, downscaled
 
     Raises:
         OSError: for unsupported formats
     """
     image = PIL.Image.open(path)
+    original_size = image.width, image.height
+    downscaled = False
+
+    if upper_bound_size:
+        image.draft(None, upper_bound_size)
+        downscaled = (image.width, image.height) < original_size
+
     image.load()
+
     if image.mode not in ('RGB', 'RGBX'):
         image_rgb = PIL.Image.new(
             "RGB", image.size, color=(255, 255, 255))
         image_rgb.paste(image)
         image = image_rgb
-    return image
+
+    return image, downscaled
 
 
 class ImageHolder:
@@ -79,13 +91,15 @@ class ImageLoader(metaclass=abc.ABCMeta):
         self.error_handler = None
 
     @abc.abstractmethod
-    def load(self, path):
+    def load(self, path, upper_bound_size):
         """Starts the image loading procedure for the passed path.
         How and when an image get's loaded depends on the implementation
         of the used ImageLoader class.
 
         Args:
             path (str): the path to the image which should be loaded
+            upper_bound_size (tuple of (width: int, height: int)):
+                the maximal size to load data for
 
         Returns:
             ImageHolder: which the image will be assigned to
@@ -112,7 +126,8 @@ class ImageLoader(metaclass=abc.ABCMeta):
         Args:
             exception (Exception): the occurred error
         """
-        if self.error_handler is not None:
+        if (self.error_handler is not None and
+                exception is not None):
             self.error_handler(exception)
 
 
@@ -121,11 +136,11 @@ class SynchronImageLoader(ImageLoader):
     which loads images right away in the same thread
     it was requested to load the image.
     """
-    def load(self, path):
+    def load(self, path, upper_bound_size):
         image = None
 
         try:
-            image = load_image(path)
+            image, _ = load_image(path, None)
         except OSError as exception:
             self.process_error(exception)
 
@@ -137,39 +152,133 @@ class AsynchronImageLoader(ImageLoader):
     which adds basic functionality
     needed to implement asynchron image loading.
     """
+    @enum.unique
+    class Priority(enum.Enum):
+        """Enum which defines the possible priorities
+        of queue entries.
+        """
+        HIGH = enum.auto()
+        LOW = enum.auto()
+
     def __init__(self):
         super().__init__()
         self.__queue = queue.Queue()
+        self.__queue_low_priority = queue.Queue()
+        self.__waiter_low_priority = threading.Condition()
 
-    def _enqueue(self, image_holder):
+    def _enqueue(self, queue, image_holder, upper_bound_size):
         """Enqueues the image holder weakly referenced.
 
         Args:
+            queue (queue.Queue): the queue to operate on
             image_holder (ImageHolder):
                 the image holder for which an image should be loaded
+            upper_bound_size (tuple of (width: int, height: int)):
+                the maximal size to load data for
         """
-        self.__queue.put(weakref.ref(image_holder))
+        queue.put((weakref.ref(image_holder), upper_bound_size))
 
-    def _dequeue(self):
+    def _dequeue(self, queue):
         """Removes queue entries till an alive reference was found.
         The referenced image holder will be returned in this case.
         Otherwise if there wasn't found any alive reference
         None will be returned.
 
+        Args:
+            queue (queue.Queue): the queue to operate on
+
         Returns:
-            ImageHolder: an queued image holder or None
+            tuple of (ImageHolder, tuple of (width: int, height: int)):
+                an queued image holder or None, upper bound size or None
         """
         holder_reference = None
         image_holder = None
+        upper_bound_size = None
 
-        while True:
-            holder_reference = self.__queue.get_nowait()
+        while not queue.empty():
+            holder_reference, upper_bound_size = queue.get_nowait()
             image_holder = holder_reference and holder_reference()
             if (holder_reference is None or
                     image_holder is not None):
                 break
 
-        return image_holder
+        return image_holder, upper_bound_size
+
+    @abc.abstractmethod
+    def _schedule(self, function, priority):
+        """Schedules the execution of a function.
+        Functions should be executed in different thread pools
+        based on their priority otherwise you can wait for a death lock.
+
+        Args:
+            function (Function): the function which should be executed
+            priority (AsynchronImageLoader.Priority):
+                the priority of the execution of this function
+        """
+        raise NotImplementedError()
+
+    def _load_image(self, path, upper_bound_size):
+        """Wrapper for calling load_image.
+        Behaves like calling it directly,
+        but allows e.g. executing the function in other processes.
+        """
+        return load_image(path, upper_bound_size)
+
+    def load(self, path, upper_bound_size):
+        holder = ImageHolder(path)
+        self._enqueue(self.__queue, holder, upper_bound_size)
+        self._schedule(self.__process_high_priority_entry,
+                       self.Priority.HIGH)
+        return holder
+
+    def __wait_for_main_work(self):
+        """Waits till all queued high priority entries were processed."""
+        if not self.__queue.empty():
+            with self.__waiter_low_priority:
+                if not self.__queue.empty():
+                    self.__waiter_low_priority.wait()
+
+    def __notify_main_work_done(self):
+        """Notifies waiting threads that
+        all queued high priority entries were processed.
+        """
+        if self.__queue.empty():
+            with self.__waiter_low_priority:
+                if self.__queue.empty():
+                    self.__waiter_low_priority.notify_all()
+
+    def __process_high_priority_entry(self):
+        """Processes a single queued high priority entry."""
+        self.__process_queue(self.__queue)
+        self.__notify_main_work_done()
+
+    def __process_low_priority_entry(self):
+        """Processes a single queued low priority entry."""
+        self.__wait_for_main_work()
+        self.__process_queue(self.__queue_low_priority)
+
+    def __process_queue(self, queue):
+        """Processes a single queued entry.
+
+        Args:
+            queue (queue.Queue): the queue to operate on
+        """
+        image = None
+        image_holder, upper_bound_size = self._dequeue(queue)
+        if image_holder is None:
+            return
+
+        try:
+            image, downscaled = self._load_image(
+                image_holder.path, upper_bound_size)
+            if upper_bound_size and downscaled:
+                self._enqueue(self.__queue_low_priority, image_holder, None)
+                self._schedule(self.__process_low_priority_entry,
+                               self.Priority.LOW)
+        except OSError as exception:
+            self.process_error(exception)
+        finally:
+            image_holder.reveal_image(image or self.PLACEHOLDER)
 
 
 # * Pythons GIL limits the usefulness of threads.
@@ -183,7 +292,30 @@ class AsynchronImageLoader(ImageLoader):
 #
 # => Using multiple processes seems to be faster for small images.
 #    Using threads seems to be faster for large images.
-class ProcessImageLoader(AsynchronImageLoader):
+class ThreadImageLoader(AsynchronImageLoader):
+    """Implementation of AsynchronImageLoader
+    which loads images in multiple threads.
+    """
+    def __init__(self):
+        super().__init__()
+        threads = os.cpu_count()
+        threads_low_priority = max(1, threads // 2)
+        self.__executor = thread.DaemonThreadPoolExecutor(
+            max_workers=threads)
+        self.__executor_low_priority = thread.DaemonThreadPoolExecutor(
+            max_workers=threads_low_priority)
+        self.threads = threads + threads_low_priority
+
+    def _schedule(self, function, priority):
+        executor = self.__executor
+        if priority == self.Priority.LOW:
+            executor = self.__executor_low_priority
+        executor.submit(function) \
+            .add_done_callback(
+                lambda future: self.process_error(future.exception()))
+
+
+class ProcessImageLoader(ThreadImageLoader):
     """Implementation of AsynchronImageLoader
     which loads images in multiple processes.
     Therefore it allows to utilise all cpu cores
@@ -191,66 +323,15 @@ class ProcessImageLoader(AsynchronImageLoader):
     """
     def __init__(self):
         super().__init__()
-        cpu_cores = os.cpu_count()
-        self.__executor_chooser = thread.DaemonThreadPoolExecutor(
-            max_workers=cpu_cores)
         self.__executor_loader = concurrent.futures.ProcessPoolExecutor(
-            max_workers=cpu_cores)
+            max_workers=self.threads)
         # ProcessPoolExecutor won't work
         # when used first in ThreadPoolExecutor
         self.__executor_loader \
             .submit(id, id) \
             .result()
 
-    def load(self, path):
-        holder = ImageHolder(path)
-        self._enqueue(holder)
-        self.__executor_chooser.submit(self.__process_queue)
-        return holder
-
-    def __process_queue(self):
-        """Processes a single queued entry."""
-        image = None
-        image_holder = self._dequeue()
-        if image_holder is None:
-            return
-
-        try:
-            future = (self.__executor_loader
-                      .submit(load_image, image_holder.path))
-            image = future.result()
-        except OSError as exception:
-            self.process_error(exception)
-        finally:
-            image_holder.reveal_image(image or self.PLACEHOLDER)
-
-
-class ThreadImageLoader(AsynchronImageLoader):
-    """Implementation of AsynchronImageLoader
-    which loads images in multiple threads.
-    """
-    def __init__(self):
-        super().__init__()
-        cpu_cores = os.cpu_count()
-        self.__executor = thread.DaemonThreadPoolExecutor(
-            max_workers=cpu_cores)
-
-    def load(self, path):
-        holder = ImageHolder(path)
-        self._enqueue(holder)
-        self.__executor.submit(self.__process_queue)
-        return holder
-
-    def __process_queue(self):
-        """Processes a single queued entry."""
-        image = None
-        image_holder = self._dequeue()
-        if image_holder is None:
-            return
-
-        try:
-            image = load_image(image_holder.path)
-        except OSError as exception:
-            self.process_error(exception)
-        finally:
-            image_holder.reveal_image(image or self.PLACEHOLDER)
+    def _load_image(self, path, upper_bound_size):
+        future = self.__executor_loader.submit(
+            load_image, path, upper_bound_size)
+        return future.result()

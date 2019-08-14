@@ -128,20 +128,31 @@ class AddImageAction(ImageAction):
             image = old_placement and old_placement.image
             last_modified = old_placement and old_placement.last_modified
             current_last_modified = os.path.getmtime(self.path)
+            width = self.max_width or self.width
+            height = self.max_height or self.height
+            scaler_class = scaling.ScalerOption(self.scaler).scaler_class
 
             if (not image
                     or last_modified < current_last_modified
                     or self.path != old_placement.path):
                 last_modified = current_last_modified
-                image = tools.loader.load(self.path)
+                upper_bound_size = None
+                max_font_width = max(map(
+                    lambda i: i or 0, windows.parent_info.font_width))
+                max_font_height = max(map(
+                    lambda i: i or 0, windows.parent_info.font_height))
+                if (scaler_class != scaling.CropImageScaler and
+                        max_font_width and max_font_height):
+                    upper_bound_size = (
+                        max_font_width * width, max_font_height * height)
+                image = tools.loader.load(self.path, upper_bound_size)
                 cache = None
 
             view.media[self.identifier] = ui.OverlayWindow.Placement(
-                self.x, self.y,
-                self.max_width or self.width, self.max_height or self.height,
+                self.x, self.y, width, height,
                 geometry.Point(self.scaling_position_x,
                                self.scaling_position_y),
-                scaling.ScalerOption(self.scaler).scaler_class(),
+                scaler_class(),
                 self.path, image, last_modified, cache)
         finally:
             await super().apply(windows, view, tools)
