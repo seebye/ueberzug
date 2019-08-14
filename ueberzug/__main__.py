@@ -12,6 +12,11 @@ Layer options:
                            simple: Key-Values separated by a tab
                            bash: associative array dumped via `declare -p`
                            [default: json]
+    -l, --loader <loader>  one of synchronous, thread, process
+                           synchronous: load images right away
+                           thread: load images in threads
+                           process: load images in additional processes
+                           [default: thread]
     -s, --silent           print stderr to /dev/null
 
 
