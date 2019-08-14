@@ -10,6 +10,9 @@ import ueberzug.thread as thread
 import ueberzug.pattern as pattern
 
 
+INDEX_ALPHA_CHANNEL = 3
+
+
 def load_image(path, upper_bound_size):
     """Loads the image and converts it
     if it doesn't use the RGB or RGBX mode.
@@ -29,6 +32,7 @@ def load_image(path, upper_bound_size):
     image = PIL.Image.open(path)
     original_size = image.width, image.height
     downscaled = False
+    mask = None
 
     if upper_bound_size:
         image.draft(None, upper_bound_size)
@@ -36,10 +40,13 @@ def load_image(path, upper_bound_size):
 
     image.load()
 
+    if image.mode == 'RGBA':
+        mask = image.split()[INDEX_ALPHA_CHANNEL]
+
     if image.mode not in ('RGB', 'RGBX'):
         image_rgb = PIL.Image.new(
             "RGB", image.size, color=(255, 255, 255))
-        image_rgb.paste(image)
+        image_rgb.paste(image, mask=mask)
         image = image_rgb
 
     return image, downscaled
