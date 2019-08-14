@@ -137,7 +137,7 @@ class ImageLoader(metaclass=abc.ABCMeta):
             self.error_handler(exception)
 
 
-class SynchronImageLoader(ImageLoader):
+class SynchronousImageLoader(ImageLoader):
     """Implementation of ImageLoader
     which loads images right away in the same thread
     it was requested to load the image.
@@ -153,7 +153,7 @@ class SynchronImageLoader(ImageLoader):
         return ImageHolder(path, image or self.PLACEHOLDER)
 
 
-class AsynchronImageLoader(ImageLoader):
+class AsynchronousImageLoader(ImageLoader):
     """Extension of ImageLoader
     which adds basic functionality
     needed to implement asynchron image loading.
@@ -298,7 +298,7 @@ class AsynchronImageLoader(ImageLoader):
 #
 # => Using multiple processes seems to be faster for small images.
 #    Using threads seems to be faster for large images.
-class ThreadImageLoader(AsynchronImageLoader):
+class ThreadImageLoader(AsynchronousImageLoader):
     """Implementation of AsynchronImageLoader
     which loads images in multiple threads.
     """
