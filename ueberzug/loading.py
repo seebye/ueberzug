@@ -6,8 +6,8 @@ import threading
 import concurrent.futures
 import enum
 
-import PIL.Image
 import ueberzug.thread as thread
+import ueberzug.pattern as pattern
 
 
 def load_image(path, upper_bound_size):
@@ -25,6 +25,7 @@ def load_image(path, upper_bound_size):
     Raises:
         OSError: for unsupported formats
     """
+    import PIL.Image
     image = PIL.Image.open(path)
     original_size = image.width, image.height
     downscaled = False
@@ -85,7 +86,12 @@ class ImageLoader(metaclass=abc.ABCMeta):
     of loading images.
     E.g. loading images asynchron
     """
-    PLACEHOLDER = PIL.Image.new('RGB', (1, 1))
+    @pattern.LazyConstant
+    def PLACEHOLDER():
+        """PIL.Image: fallback image for occuring errors"""
+        # pylint: disable=no-method-argument,invalid-name
+        import PIL.Image
+        return PIL.Image.new('RGB', (1, 1))
 
     def __init__(self):
         self.error_handler = None
