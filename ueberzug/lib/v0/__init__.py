@@ -309,6 +309,7 @@ class Canvas:
         self.__process = None
         self.__transmitter = None
         self.__used_identifiers = set()
+        self.automatic_transmission = True
 
     def create_placement(self, identifier, *args, **kwargs):
         """Creates a placement associated with this canvas.
@@ -390,9 +391,10 @@ class Canvas:
 
         self.__transmitter.enqueue(command)
 
-    def request_transmission(self):
+    def request_transmission(self, *, force=False):
         """Requests the transmission of every command in the queue."""
         if not self.__process.responsive:
             self.__process.start()
 
-        self.__transmitter.transmit()
+        if self.automatic_transmission or force:
+            self.__transmitter.transmit()

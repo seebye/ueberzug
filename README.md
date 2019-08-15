@@ -199,17 +199,19 @@ import ueberzug.lib.v0 as ueberzug
    
    Methods:  
    
-   | Name             | Returns      | Description                          |
-   |------------------|--------------|--------------------------------------|
-   | create_placement | Placement    | prevents the use of the same identifier multiple times,<br>takes the same arguments as the Placement constructor (excluding canvas parameter) |
-   | \_\_call\_\_     | Function     | Decorator which returns a function which calls the decorated function with the keyword parameter canvas=this_canvas_object.<br>Of course other arguments are also passed through. |
+   | Name                 | Returns      | Description                          |
+   |----------------------|--------------|--------------------------------------|
+   | create_placement     | Placement    | prevents the use of the same identifier multiple times,<br>takes the same arguments as the Placement constructor (excluding canvas parameter) |
+   | \_\_call\_\_         | Function     | Decorator which returns a function which calls the decorated function with the keyword parameter canvas=this_canvas_object.<br>Of course other arguments are also passed through. |
+   | request_transmission | -            | Transmits queued commands if automatic\_transmission is enabled or force=True is passed as keyword argument. |
    
-   Properties:  
+   Properties / Attributes:  
    
    | Name          | Type                    | Setter | Description                          |
    |---------------|-------------------------|--------|--------------------------------------|
    | lazy_drawing  | context manager factory | No     | prevents the transmission of commands till the with-statement was left<br>`with canvas.lazy_drawing: pass`|
    | synchronous_lazy_drawing  | context manager factory | No     | Does the same as lazy_drawing. Additionally forces the redrawing of the windows to happen immediately. |
+   | automatic\_transmission  | bool | Yes    | Transmit commands instantly on changing a placement. If it's disabled commands won't be transmitted till a lazy_drawing or synchronous_lazy_drawing with-statement was left or request_transmission(force=True) was called. Default: True |
 
 
 
