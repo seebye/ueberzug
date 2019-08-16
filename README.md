@@ -24,6 +24,7 @@ Advantages to w3mimgdisplay:
   * [Libraries](#libraries)
     + [Bash](#bash)
     + [Python](#python)
+    + [Python Urwid](https://github.com/seebye/urwid-ueberzogen)
   * [Examples](#examples)
 
 
