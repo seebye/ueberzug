@@ -45,14 +45,8 @@ but they will be installed by pip.
 $ sudo pip3 install ueberzug
 ```
 
-Ueberzug uses pillow-simd instead of pillow,  
-but pillow-simd won't run on every hardware.  
-So if you experience e.g. a Segmentation fault 
-you can try to use ueberzug with pillow.  
-```bash
-$ sudo pip3 uninstall pillow-simd
-$ sudo pip3 install pillow
-```
+Note: You can improve the performance of image manipulation functions
+by using [pillow-simd](https://github.com/uploadcare/pillow-simd) instead of pillow.
 
 ## Communication
 

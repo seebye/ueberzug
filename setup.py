@@ -41,7 +41,7 @@ setuptools.setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='18.1.3',  # Required
+    version='18.1.4',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -94,7 +94,7 @@ setuptools.setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['python-xlib', 'pillow-simd', 'docopt',
+    install_requires=['python-xlib', 'pillow', 'docopt',
                       'psutil', 'attrs'],  # Optional
     python_requires='>=3.5',
 
