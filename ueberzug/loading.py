@@ -362,10 +362,23 @@ class ProcessImageLoader(ThreadImageLoader):
             .submit(id, id) \
             .result()
 
+    @staticmethod
+    def _load_image_extern(path, upper_bound_size):
+        """This function is a wrapper for the image loading function
+        as sometimes pillow restores decoded images
+        received from other processes wrongly.
+        E.g. a PNG is reported as webp (-> crash on using an image function)
+        So this function is a workaround which prevents these crashs to happen.
+        """
+        image, downscaled = load_image(path, upper_bound_size)
+        return image.mode, image.size, image.tobytes(), downscaled
+
     def _load_image(self, path, upper_bound_size):
+        import PIL.Image
         future = self.__executor_loader.submit(
-            load_image, path, upper_bound_size)
-        return future.result()
+            ProcessImageLoader._load_image_extern, path, upper_bound_size)
+        mode, size, data, downscaled = future.result()
+        return PIL.Image.frombytes(mode, size, data), downscaled
 
 
 @enum.unique
