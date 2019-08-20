@@ -35,6 +35,9 @@ def load_image(path, upper_bound_size):
     mask = None
 
     if upper_bound_size:
+        upper_bound_size = tuple(
+            min(size for size in size_pair if size > 0)
+            for size_pair in zip(upper_bound_size, original_size))
         image.draft(None, upper_bound_size)
         downscaled = (image.width, image.height) < original_size
 
