@@ -95,7 +95,7 @@ setuptools.setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['python-xlib', 'pillow', 'docopt',
-                      'psutil', 'attrs'],  # Optional
+                      'psutil', 'attrs>=18.2.0'],  # Optional
     python_requires='>=3.5',
 
     # List additional URLs that are relevant to your project as a dict.
