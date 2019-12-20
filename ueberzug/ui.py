@@ -231,7 +231,7 @@ class OverlayWindow:
             event_mask=X.StructureNotifyMask)
         self._set_click_through()
         self._set_invisible()
-        self._display.flush()
+        self._display.sync()
 
     def reset_terminal_info(self):
         """Resets the terminal information of this window."""
