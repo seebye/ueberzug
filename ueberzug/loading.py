@@ -89,6 +89,49 @@ class ImageHolder:
         return self.image
 
 
+class PostLoadImageProcessor(metaclass=abc.ABCMeta):
+    """Describes the structure used to define callbacks which
+    will be invoked after loading an image.
+    """
+    @abc.abstractmethod
+    def on_loaded(self, image):
+        """Postprocessor of an loaded image.
+        The returned image will be assigned to the image holder.
+
+        Args:
+            image (PIL.Image): the loaded image
+
+        Returns:
+            PIL.Image:
+                the image which will be assigned
+                to the image holder of this loading process
+        """
+        raise NotImplementedError()
+
+
+class CoverPostLoadImageProcessor(PostLoadImageProcessor):
+    """Implementation of PostLoadImageProcessor
+    which resizes an image (if possible -> needs to be bigger)
+    such that it covers only just a given resolution.
+    """
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+
+    def on_loaded(self, image):
+        import PIL.Image
+        resize_ratio = max(min(1, self.width / image.width),
+                           min(1, self.height / image.height))
+
+        if resize_ratio != 1:
+            image = image.resize(
+                (int(resize_ratio * image.width),
+                 int(resize_ratio * image.height)),
+                PIL.Image.ANTIALIAS)
+
+        return image
+
+
 class ImageLoader(metaclass=abc.ABCMeta):
     """Describes the structure used to define image loading strategies.
 
@@ -113,7 +156,7 @@ class ImageLoader(metaclass=abc.ABCMeta):
         self.error_handler = None
 
     @abc.abstractmethod
-    def load(self, path, upper_bound_size):
+    def load(self, path, upper_bound_size, post_load_processor=None):
         """Starts the image loading procedure for the passed path.
         How and when an image get's loaded depends on the implementation
         of the used ImageLoader class.
@@ -122,6 +165,8 @@ class ImageLoader(metaclass=abc.ABCMeta):
             path (str): the path to the image which should be loaded
             upper_bound_size (tuple of (width: int, height: int)):
                 the maximal size to load data for
+            post_load_processor (PostLoadImageProcessor):
+                allows to apply changes to the recently loaded image
 
         Returns:
             ImageHolder: which the image will be assigned to
@@ -162,13 +207,16 @@ class SynchronousImageLoader(ImageLoader):
     def get_loader_name():
         return "synchronous"
 
-    def load(self, path, upper_bound_size):
+    def load(self, path, upper_bound_size, post_load_processor=None):
         image = None
 
         try:
             image, _ = load_image(path, None)
         except OSError as exception:
             self.process_error(exception)
+
+        if image and post_load_processor:
+            image = post_load_processor.on_loaded(image)
 
         return ImageHolder(path, image or self.PLACEHOLDER)
 
@@ -192,7 +240,7 @@ class AsynchronousImageLoader(ImageLoader):
         self.__queue_low_priority = queue.Queue()
         self.__waiter_low_priority = threading.Condition()
 
-    def _enqueue(self, queue, image_holder, upper_bound_size):
+    def _enqueue(self, queue, image_holder, upper_bound_size, post_load_processor):
         """Enqueues the image holder weakly referenced.
 
         Args:
@@ -201,8 +249,11 @@ class AsynchronousImageLoader(ImageLoader):
                 the image holder for which an image should be loaded
             upper_bound_size (tuple of (width: int, height: int)):
                 the maximal size to load data for
+            post_load_processor (PostLoadImageProcessor):
+                allows to apply changes to the recently loaded image
         """
-        queue.put((weakref.ref(image_holder), upper_bound_size))
+        queue.put((
+            weakref.ref(image_holder), upper_bound_size, post_load_processor))
 
     def _dequeue(self, queue):
         """Removes queue entries till an alive reference was found.
@@ -214,21 +265,25 @@ class AsynchronousImageLoader(ImageLoader):
             queue (queue.Queue): the queue to operate on
 
         Returns:
-            tuple of (ImageHolder, tuple of (width: int, height: int)):
-                an queued image holder or None, upper bound size or None
+            tuple of (ImageHolder, tuple of (width: int, height: int),
+                      PostLoadImageProcessor):
+                an queued image holder or None, upper bound size or None,
+                the post load image processor or None
         """
         holder_reference = None
         image_holder = None
         upper_bound_size = None
+        post_load_processor = None
 
         while not queue.empty():
-            holder_reference, upper_bound_size = queue.get_nowait()
+            holder_reference, upper_bound_size, post_load_processor = \
+                queue.get_nowait()
             image_holder = holder_reference and holder_reference()
             if (holder_reference is None or
                     image_holder is not None):
                 break
 
-        return image_holder, upper_bound_size
+        return image_holder, upper_bound_size, post_load_processor
 
     @abc.abstractmethod
     def _schedule(self, function, priority):
@@ -243,16 +298,22 @@ class AsynchronousImageLoader(ImageLoader):
         """
         raise NotImplementedError()
 
-    def _load_image(self, path, upper_bound_size):
+    def _load_image(self, path, upper_bound_size, post_load_processor):
         """Wrapper for calling load_image.
         Behaves like calling it directly,
         but allows e.g. executing the function in other processes.
         """
-        return load_image(path, upper_bound_size)
+        image, *other_data = load_image(path, upper_bound_size)
 
-    def load(self, path, upper_bound_size):
+        if image and post_load_processor:
+            image = post_load_processor.on_loaded(image)
+
+        return (image, *other_data)
+
+    def load(self, path, upper_bound_size, post_load_processor=None):
         holder = ImageHolder(path)
-        self._enqueue(self.__queue, holder, upper_bound_size)
+        self._enqueue(
+            self.__queue, holder, upper_bound_size, post_load_processor)
         self._schedule(self.__process_high_priority_entry,
                        self.Priority.HIGH)
         return holder
@@ -290,15 +351,18 @@ class AsynchronousImageLoader(ImageLoader):
             queue (queue.Queue): the queue to operate on
         """
         image = None
-        image_holder, upper_bound_size = self._dequeue(queue)
+        image_holder, upper_bound_size, post_load_processor = \
+            self._dequeue(queue)
         if image_holder is None:
             return
 
         try:
             image, downscaled = self._load_image(
-                image_holder.path, upper_bound_size)
+                image_holder.path, upper_bound_size, post_load_processor)
             if upper_bound_size and downscaled:
-                self._enqueue(self.__queue_low_priority, image_holder, None)
+                self._enqueue(
+                    self.__queue_low_priority,
+                    image_holder, None, post_load_processor)
                 self._schedule(self.__process_low_priority_entry,
                                self.Priority.LOW)
         except OSError as exception:
@@ -366,20 +430,25 @@ class ProcessImageLoader(ThreadImageLoader):
             .result()
 
     @staticmethod
-    def _load_image_extern(path, upper_bound_size):
+    def _load_image_extern(path, upper_bound_size, post_load_processor):
         """This function is a wrapper for the image loading function
         as sometimes pillow restores decoded images
         received from other processes wrongly.
         E.g. a PNG is reported as webp (-> crash on using an image function)
         So this function is a workaround which prevents these crashs to happen.
         """
-        image, downscaled = load_image(path, upper_bound_size)
-        return image.mode, image.size, image.tobytes(), downscaled
+        image, *other_data = load_image(path, upper_bound_size)
 
-    def _load_image(self, path, upper_bound_size):
+        if image and post_load_processor:
+            image = post_load_processor.on_loaded(image)
+
+        return (image.mode, image.size, image.tobytes(), *other_data)
+
+    def _load_image(self, path, upper_bound_size, post_load_processor=None):
         import PIL.Image
         future = self.__executor_loader.submit(
-            ProcessImageLoader._load_image_extern, path, upper_bound_size)
+            ProcessImageLoader._load_image_extern,
+            path, upper_bound_size, post_load_processor)
         mode, size, data, downscaled = future.result()
         return PIL.Image.frombytes(mode, size, data), downscaled
 

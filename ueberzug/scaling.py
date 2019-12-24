@@ -17,7 +17,22 @@ class ImageScaler(metaclass=abc.ABCMeta):
     @staticmethod
     @abc.abstractmethod
     def get_scaler_name():
-        """Returns the constant name which is associated to this scaler."""
+        """Returns:
+            str: the constant name which is associated to this scaler.
+        """
+        raise NotImplementedError()
+
+    @staticmethod
+    @abc.abstractmethod
+    def is_indulgent_resizing():
+        """This method specifies whether the
+        algorithm returns noticeable different results for
+        the same image with different sizes (bigger than the
+        maximum size which is passed to the scale method).
+
+        Returns:
+            bool: False if the results differ
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -98,6 +113,10 @@ class CropImageScaler(MinSizeImageScaler, OffsetImageScaler):
     def get_scaler_name():
         return "crop"
 
+    @staticmethod
+    def is_indulgent_resizing():
+        return False
+
     def scale(self, image, position: geometry.Point,
               width: int, height: int):
         width, height = self.calculate_resolution(image, width, height)
@@ -117,6 +136,10 @@ class DistortImageScaler(ImageScaler):
     @staticmethod
     def get_scaler_name():
         return "distort"
+
+    @staticmethod
+    def is_indulgent_resizing():
+        return True
 
     def calculate_resolution(self, image, width: int, height: int):
         return width, height
@@ -140,6 +163,10 @@ class FitContainImageScaler(DistortImageScaler):
     def get_scaler_name():
         return "fit_contain"
 
+    @staticmethod
+    def is_indulgent_resizing():
+        return True
+
     def calculate_resolution(self, image, width: int, height: int):
         factor = min(width / image.width, height / image.height)
         return int(image.width * factor), int(image.height * factor)
@@ -154,6 +181,10 @@ class ContainImageScaler(FitContainImageScaler):
     @staticmethod
     def get_scaler_name():
         return "contain"
+
+    @staticmethod
+    def is_indulgent_resizing():
+        return True
 
     def calculate_resolution(self, image, width: int, height: int):
         return super().calculate_resolution(
@@ -173,6 +204,10 @@ class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
     @staticmethod
     def get_scaler_name():
         return "forced_cover"
+
+    @staticmethod
+    def is_indulgent_resizing():
+        return True
 
     def scale(self, image, position: geometry.Point,
               width: int, height: int):
@@ -202,6 +237,10 @@ class CoverImageScaler(MinSizeImageScaler, ForcedCoverImageScaler):
     @staticmethod
     def get_scaler_name():
         return "cover"
+
+    @staticmethod
+    def is_indulgent_resizing():
+        return True
 
 
 @enum.unique
