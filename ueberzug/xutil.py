@@ -16,7 +16,7 @@ Xdisplay.Display.__enter__ = lambda self: self
 Xdisplay.Display.__exit__ = lambda self, *args: self.close()
 
 PREPARED_DISPLAYS = []
-DISPLAY_SUPPLIES = 5
+DISPLAY_SUPPLIES = 1
 
 
 class Events:
@@ -46,7 +46,8 @@ class TerminalWindowInfo(terminal.TerminalInfo):
 
 async def prepare_display():
     """Fills up the display supplies."""
-    PREPARED_DISPLAYS.append(Xdisplay.Display())
+    if len(PREPARED_DISPLAYS) < DISPLAY_SUPPLIES:
+        PREPARED_DISPLAYS.append(Xdisplay.Display())
 
 
 def get_display():
@@ -55,8 +56,7 @@ def get_display():
     (e.g. Drawable#get_geometry)
     Use for each request a new display as workaround.
     """
-    for i in range(len(PREPARED_DISPLAYS) - 1, DISPLAY_SUPPLIES):
-        # TODO subtract the already scheduled display creations
+    for _ in range(len(PREPARED_DISPLAYS), DISPLAY_SUPPLIES):
         asyncio.ensure_future(prepare_display())
     if not PREPARED_DISPLAYS:
         return Xdisplay.Display()
