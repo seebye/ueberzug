@@ -120,40 +120,148 @@ class AddImageAction(ImageAction):
     def get_action_name():
         return 'add'
 
+    def __attrs_post_init__(self):
+        self.width = self.max_width or self.width
+        self.height = self.max_height or self.height
+        # attrs doesn't support overriding the init method
+        # pylint: disable=attribute-defined-outside-init
+        self.__scaler_class = None
+        self.__last_modified = None
+
+    @property
+    def scaler_class(self):
+        """scaling.ImageScaler: the used scaler class of this placement"""
+        if self.__scaler_class is None:
+            self.__scaler_class = \
+                scaling.ScalerOption(self.scaler).scaler_class
+        return self.__scaler_class
+
+    @property
+    def last_modified(self):
+        """float: the last modified time of the image"""
+        if self.__last_modified is None:
+            self.__last_modified = os.path.getmtime(self.path)
+        return self.__last_modified
+
+    def is_same_image(self, old_placement):
+        """Determines whether the placement contains the same image
+        after applying the changes of this command.
+
+        Args:
+            old_placement (ui.OverlayWindow.Placement):
+                the old data of the placement
+
+        Returns:
+            bool: True if it's the same file
+        """
+        return old_placement and not (
+            old_placement.last_modified < self.last_modified
+            or self.path != old_placement.path)
+
+    def is_full_reload_required(self, old_placement,
+                                screen_columns, screen_rows):
+        """Determines whether it's required to fully reload
+        the image of the placement to properly render the placement.
+
+        Args:
+            old_placement (ui.OverlayWindow.Placement):
+                the old data of the placement
+            screen_columns (float):
+                the maximum amount of columns the screen can display
+            screen_rows (float):
+                the maximum amount of rows the screen can display
+
+        Returns:
+            bool: True if the image should be reloaded
+        """
+        return old_placement and (
+            (not self.scaler_class.is_indulgent_resizing()
+             and old_placement.scaler.is_indulgent_resizing())
+            or (old_placement.width <= screen_columns < self.width)
+            or (old_placement.height <= screen_rows < self.height))
+
+    def is_partly_reload_required(self, old_placement,
+                                  screen_columns, screen_rows):
+        """Determines whether it's required to partly reload
+        the image of the placement to render the placement more quickly.
+
+        Args:
+            old_placement (ui.OverlayWindow.Placement):
+                the old data of the placement
+            screen_columns (float):
+                the maximum amount of columns the screen can display
+            screen_rows (float):
+                the maximum amount of rows the screen can display
+
+        Returns:
+            bool: True if the image should be reloaded
+        """
+        return old_placement and (
+            (self.scaler_class.is_indulgent_resizing()
+             and not old_placement.scaler.is_indulgent_resizing())
+            or (self.width <= screen_columns < old_placement.width)
+            or (self.height <= screen_rows < old_placement.height))
+
     async def apply(self, windows, view, tools):
         try:
             import ueberzug.ui as ui
+            import ueberzug.loading as loading
             old_placement = view.media.pop(self.identifier, None)
             cache = old_placement and old_placement.cache
             image = old_placement and old_placement.image
-            last_modified = old_placement and old_placement.last_modified
-            current_last_modified = os.path.getmtime(self.path)
-            width = self.max_width or self.width
-            height = self.max_height or self.height
-            scaler_class = scaling.ScalerOption(self.scaler).scaler_class
 
-            if (not image
-                    or last_modified < current_last_modified
-                    or self.path != old_placement.path):
-                last_modified = current_last_modified
+            max_font_width = max(map(
+                lambda i: i or 0, windows.parent_info.font_width or [0]))
+            max_font_height = max(map(
+                lambda i: i or 0, windows.parent_info.font_height or [0]))
+            font_size_available = max_font_width and max_font_height
+            screen_columns = (font_size_available and
+                              view.screen_width / max_font_width)
+            screen_rows = (font_size_available and
+                           view.screen_height / max_font_height)
+
+            # By default images are only stored up to a resolution which
+            # is about as big as the screen resolution.
+            # (loading.CoverPostLoadImageProcessor)
+            # The principle of spatial locality does not apply to
+            # resize operations of images with big resolutions
+            # which is why those operations should be applied
+            # to a resized version of those images.
+            # Sometimes we still need all pixels e.g.
+            # if the image scaler crop is used.
+            # So sometimes it's required to fully load them
+            # and sometimes it's not required anymore which is
+            # why they should be partly reloaded
+            # (to speed up the resize operations again).
+            if (not self.is_same_image(old_placement)
+                    or (font_size_available and self.is_full_reload_required(
+                        old_placement, screen_columns, screen_rows))
+                    or (font_size_available and self.is_partly_reload_required(
+                        old_placement, screen_columns, screen_rows))):
                 upper_bound_size = None
-                max_font_width = max(map(
-                    lambda i: i or 0, windows.parent_info.font_width))
-                max_font_height = max(map(
-                    lambda i: i or 0, windows.parent_info.font_height))
-                if (scaler_class != scaling.CropImageScaler and
-                        max_font_width and max_font_height):
+                image_post_load_processor = None
+                if (self.scaler_class != scaling.CropImageScaler and
+                        font_size_available):
                     upper_bound_size = (
-                        max_font_width * width, max_font_height * height)
-                image = tools.loader.load(self.path, upper_bound_size)
+                        max_font_width * self.width,
+                        max_font_height * self.height)
+                if (self.scaler_class != scaling.CropImageScaler
+                        and font_size_available
+                        and self.width <= screen_columns
+                        and self.height <= screen_rows):
+                    image_post_load_processor = \
+                        loading.CoverPostLoadImageProcessor(
+                            view.screen_width, view.screen_height)
+                image = tools.loader.load(
+                    self.path, upper_bound_size, image_post_load_processor)
                 cache = None
 
             view.media[self.identifier] = ui.OverlayWindow.Placement(
-                self.x, self.y, width, height,
+                self.x, self.y, self.width, self.height,
                 geometry.Point(self.scaling_position_x,
                                self.scaling_position_y),
-                scaler_class(),
-                self.path, image, last_modified, cache)
+                self.scaler_class(),
+                self.path, image, self.last_modified, cache)
         finally:
             await super().apply(windows, view, tools)
 

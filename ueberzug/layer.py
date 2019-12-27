@@ -173,6 +173,8 @@ class View:
     def __init__(self):
         self.offset = geometry.Distance()
         self.media = {}
+        self.screen_width = 0
+        self.screen_height = 0
 
 
 class Tools:
@@ -185,6 +187,7 @@ class Tools:
 
 def main(options):
     display = xutil.get_display()
+    screen = display.screen()
     window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
@@ -198,6 +201,8 @@ def main(options):
     window_factory = ui.OverlayWindow.Factory(display, view)
     windows = batch.BatchList(window_factory.create(*window_infos))
     image_loader.register_error_handler(error_handler)
+    view.screen_width = screen.width_in_pixels
+    view.screen_height = screen.height_in_pixels
 
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
