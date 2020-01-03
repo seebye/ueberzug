@@ -43,6 +43,14 @@ def load_image(path, upper_bound_size):
 
     image.load()
 
+    if (image.format == 'PNG'
+            and image.mode in ('L', 'P')
+            and 'transparency' in image.info):
+        # Prevent pillow to print the warning
+        # 'Palette images with Transparency expressed in bytes should be
+        #  converted to RGBA images'
+        image = image.convert('RGBA')
+
     if image.mode == 'RGBA':
         mask = image.split()[INDEX_ALPHA_CHANNEL]
 
