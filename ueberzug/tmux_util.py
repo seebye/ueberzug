@@ -63,21 +63,20 @@ def is_window_focused():
     return result == "1,0\n"
 
 
-def get_client_ttys_by_pid():
+def get_client_pids():
     """Determines the tty for each tmux client
     displaying the pane this program runs in.
     """
     if not is_window_focused():
         return {}
 
-    return {int(pid): tty
-            for pid_tty in
+    return {int(pid)
+            for pid in
             subprocess.check_output([
                 'tmux', 'list-clients',
-                '-F', '#{client_pid},#{client_tty}',
+                '-F', '#{client_pid}',
                 '-t', get_pane()
-            ]).decode().splitlines()
-            for pid, tty in (pid_tty.split(','),)}
+            ]).decode().splitlines()}
 
 
 def register_hook(event, command):

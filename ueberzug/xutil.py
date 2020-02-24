@@ -65,6 +65,9 @@ def get_display():
 
 @functools.lru_cache()
 def get_parent_pids(pid=None):
+    """Determines all parent pids of this process.
+    The list is sorted from youngest parent to oldest parent.
+    """
     pids = []
     process = psutil.Process(pid=pid)
 
@@ -106,29 +109,42 @@ def get_pid_window_id_map():
         }}
 
 
-def get_first_window_id(pid_window_id_map: dict, pids: list):
-    """Determines the window id of the youngest
-    parent owning a window.
+def sort_by_key_list(mapping: dict, key_list: list):
+    """Sorts the items of the mapping
+    by the index of the keys in the key list.
+
+    Args:
+        mapping (dict): the mapping to be sorted
+        key_list (list): the list which specifies the order
+
+    Returns:
+        list: which contains the sorted items as tuples
     """
-    win_ids_res = [None] * len(pids)
+    key_map = {key: index for index, key in enumerate(key_list)}
+    return sorted(
+        mapping.items(),
+        key=lambda item: key_map.get(item[0], float('inf')))
 
-    for pid, window_id in pid_window_id_map.items():
-        try:
-            win_ids_res[pids.index(pid)] = window_id
-        except ValueError:
-            pass
 
-    try:
-        return next(i for i in win_ids_res if i)
-    except StopIteration:
-        # Window needs to be mapped,
-        # otherwise it's not listed in _NET_CLIENT_LIST
-        return None
+def key_intersection(mapping: dict, key_list: list):
+    """Creates a new map which only contains the intersection
+    of the keys.
+
+    Args:
+        mapping (dict): the mapping to be filtered
+        key_list (list): the keys to be used as a whitelist
+
+    Returns:
+        dict: which only contains keys which are also in key_list
+    """
+    key_map = {key: index for index, key in enumerate(key_list)}
+    return {key: value for key, value in mapping.items()
+            if key in key_map}
 
 
 def get_first_pty(pids: list):
     """Determines the pseudo terminal of
-    the first parent process which owns one.
+    the first process in the passed list which owns one.
     """
     for pid in pids:
         pty_candidate = '/proc/{pid}/fd/1'.format(pid=pid)
@@ -148,27 +164,28 @@ def get_parent_window_infos():
         list of TerminalWindowInfo
     """
     window_infos = []
-    clients_pid_tty = {}
+    client_pids = {}
 
     if tmux_util.is_used():
-        clients_pid_tty = tmux_util.get_client_ttys_by_pid()
+        client_pids = tmux_util.get_client_pids()
     else:
-        clients_pid_tty = {psutil.Process().pid: None}
+        client_pids = {psutil.Process().pid}
 
-    if clients_pid_tty:
+    if client_pids:
         pid_window_id_map = get_pid_window_id_map()
 
-        for pid, pty in clients_pid_tty.items():
+        for pid in client_pids:
             ppids = get_parent_pids(pid)
-            wid = get_first_window_id(pid_window_id_map, ppids)
-
-            if pty is None and not os.isatty(sys.stdout.fileno()):
-                # note: this method won't return the desired pseudo tty
-                #       if ueberzug runs in tmux
-                #       (pty shouldn't be None in this case anyways)
-                pty = get_first_pty(ppids)
-
-            if wid:
-                window_infos.append(TerminalWindowInfo(wid, pty))
+            ppid_window_id_map = key_intersection(pid_window_id_map, ppids)
+            try:
+                window_pid, window_id = next(iter(sort_by_key_list(
+                    ppid_window_id_map, ppids)))
+                window_children_pids = ppids[:ppids.index(window_pid)][::-1]
+                pty = get_first_pty(window_children_pids)
+                window_infos.append(TerminalWindowInfo(window_id, pty))
+            except StopIteration:
+                # Window needs to be mapped,
+                # otherwise it's not listed in _NET_CLIENT_LIST
+                pass
 
     return window_infos
