@@ -186,6 +186,14 @@ class Tools:
 
 
 def main(options):
+    if options['--silent']:
+        try:
+            outfile = os.open(os.devnull, os.O_WRONLY)
+            os.close(sys.stderr.fileno())
+            os.dup2(outfile, sys.stderr.fileno())
+        finally:
+            os.close(outfile)
+
     display = xutil.get_display()
     screen = display.screen()
     window_infos = xutil.get_parent_window_infos()
@@ -207,9 +215,6 @@ def main(options):
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
         view.offset = tmux_util.get_offset()
-
-    if options['--silent']:
-        sys.stderr = open('/dev/null', 'w')
 
     with windows:
         loop.set_default_executor(executor)
