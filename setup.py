@@ -96,7 +96,7 @@ setuptools.setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['python-xlib', 'pillow', 'docopt',
                       'psutil', 'attrs>=18.2.0'],  # Optional
-    python_requires='>=3.5',
+    python_requires='>=3.6',
 
     # List additional URLs that are relevant to your project as a dict.
     #
