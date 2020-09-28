@@ -22,7 +22,7 @@ Advantages to w3mimgdisplay:
     + [Add](#add)
     + [Remove](#remove)
   * [Libraries](#libraries)
-    + [Bash](#bash)
+    + [~~Bash~~ (deprecated)](#bash)
     + [Python](#python)
     + [Python Urwid](https://github.com/seebye/urwid-ueberzogen)
   * [Examples](#examples)
@@ -118,22 +118,22 @@ Just a reminder: This is a GPLv3 licensed project, so if you use any of these li
 
 #### Bash
 
-First of all the library doesn't follow the posix standard,  
-so you can't use it in any other shell than bash.  
+The library is deprecated.  
+Dump associative arrays if you want to use ueberzug with bash.  
 
-Executing `ueberzug library` will print the path to the library to stdout.  
-```bash
-source "`ueberzug library`"
-```
+~~First of all the library doesn't follow the posix standard,  
+so you can't use it in any other shell than bash.~~  
 
-**Functions**:
+~~Executing `ueberzug library` will print the path to the library to stdout.~~  
 
-- `ImageLayer` starts the ueberzug process and uses bashs associative arrays to transfer commands.  
-- Also there will be a function named `ImageLayer::{action_name}` declared for each action.  
-  Each of this function takes the key values pairs of the respective action as arguments.  
-  Every argument of these functions has to be an associative key value pair.  
-  `ImageLayer::{action_name} [{key0}]="{value0}" [{key1}]="{value1}" ...`  
-  Executing such a function builds the desired command string according to the passed arguments and prints it to stdout.  
+~~**Functions**~~:
+
+- ~~`ImageLayer` starts the ueberzug process and uses bashs associative arrays to transfer commands.~~  
+- ~~Also there will be a function named `ImageLayer::{action_name}` declared for each action.~~  
+  ~~Each of this function takes the key values pairs of the respective action as arguments.~~  
+  ~~Every argument of these functions has to be an associative key value pair.~~  
+  ~~`ImageLayer::{action_name} [{key0}]="{value0}" [{key1}]="{value1}" ...`~~  
+  ~~Executing such a function builds the desired command string according to the passed arguments and prints it to stdout.~~  
 
 #### Python
 
@@ -219,28 +219,26 @@ Command formats:
 - Simple command format: `action add x   0   y   0   path    /some/path/some_image.jpg`  
 - Bash command format: `declare -A command=([path]="/some/path/some_image.jpg" [action]="add" [x]="0" [y]="0" )`  
 
-Bash library:
+Bash:
 
 ```bash
-source "`ueberzug library`"
-
 # process substitution example:
-ImageLayer 0< <(
-    ImageLayer::add [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg"
-    ImageLayer::add [identifier]="example1" [x]="10" [y]="0" [path]="/some/path/some_image1.jpg"
+ueberzug layer --parser bash 0< <(
+    declare -Ap add_command=([action]="add" [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg")
+    declare -Ap add_command=([action]="add" [identifier]="example1" [x]="10" [y]="0" [path]="/some/path/some_image1.jpg")
     sleep 5
-    ImageLayer::remove [identifier]="example0"
+    declare -Ap remove_command=([action]="remove" [identifier]="example0")
     sleep 5
 )
 
 # group commands example:
 {
-    ImageLayer::add [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg"
-    ImageLayer::add [identifier]="example1" [x]="10" [y]="0" [path]="/some/path/some_image1.jpg"
+    declare -Ap add_command=([action]="add" [identifier]="example0" [x]="0" [y]="0" [path]="/some/path/some_image0.jpg")
+    declare -Ap add_command=([action]="add" [identifier]="example1" [x]="10" [y]="0" [path]="/some/path/some_image1.jpg")
     read
-    ImageLayer::remove [identifier]="example0"
+    declare -Ap remove_command=([action]="remove" [identifier]="example0")
     read
-} | ImageLayer
+} | ueberzug layer --parser bash
 ```
 
 Python library:  
