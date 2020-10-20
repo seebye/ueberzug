@@ -5,6 +5,8 @@ import threading
 import json
 import collections
 import contextlib
+import os
+import signal
 
 import attr
 
@@ -186,7 +188,8 @@ class UeberzugProcess:
             ['ueberzug', 'layer'] + self.__start_options,
             stdin=subprocess.PIPE,
             bufsize=self.__BUFFER_SIZE_BYTES,
-            universal_newlines=True)
+            universal_newlines=True,
+            start_new_session=True)
 
     def stop(self):
         """Sends SIGTERM to the running ueberzug process
@@ -195,10 +198,13 @@ class UeberzugProcess:
         SIGKILL will also be send.
         """
         if self.running:
+            ueberzug_pgid = os.getpgid(self.__process.pid)
+            own_pgid = os.getpgid(0)
+            assert ueberzug_pgid != own_pgid
             timer_kill = threading.Timer(
                 self.__KILL_TIMEOUT_SECONDS,
-                self.__process.kill,
-                [])
+                os.killpg,
+                [ueberzug_pgid, signal.SIGKILL])
 
             try:
                 self.__process.terminate()

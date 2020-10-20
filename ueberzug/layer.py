@@ -216,7 +216,7 @@ def main(options):
         atexit.register(setup_tmux_hooks())
         view.offset = tmux_util.get_offset()
 
-    with windows:
+    with windows, image_loader:
         loop.set_default_executor(executor)
 
         for sig in (signal.SIGINT, signal.SIGTERM):
