@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Usage:
-    ueberzug MODULE [options]
+    ueberzug layer [options]
+    ueberzug library
+    ueberzug query_windows PIDS ...
 
 Routines:
     layer                   Display images
     library                 Prints the path to the bash library
+    query_windows           Orders ueberzug to search for windows.
+                            Only for internal use.
 
 Layer options:
     -p, --parser <parser>  one of json, simple, bash
@@ -26,28 +30,22 @@ License:
     This is free software, and you are welcome to redistribute it
     under certain conditions.
 """
-import sys
-
 import docopt
 
 
 def main():
     options = docopt.docopt(__doc__)
-    module_name = options['MODULE']
     module = None
 
-    if module_name == 'layer':
+    if options['layer']:
         import ueberzug.layer as layer
         module = layer
-    elif module_name == 'library':
+    elif options['library']:
         import ueberzug.library as library
         module = library
-
-    if module is None:
-        print("Unknown module '{}'"
-              .format(module_name),
-              file=sys.stderr)
-        return
+    elif options['query_windows']:
+        import ueberzug.query_windows as query_windows
+        module = query_windows
 
     module.main(options)
 

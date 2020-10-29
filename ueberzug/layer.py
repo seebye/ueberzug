@@ -116,7 +116,7 @@ def setup_tmux_hooks():
     lock_directory_path = pathlib.PosixPath(tempfile.gettempdir()) / 'ueberzug'
     lock_file_path = lock_directory_path / tmux_util.get_session_id()
     own_pid = str(os.getpid())
-    command_template = 'kill -USR1 '
+    command_template = 'ueberzug query_windows '
 
     try:
         lock_directory_path.mkdir()
