@@ -205,6 +205,13 @@ class ImageLoader(metaclass=abc.ABCMeta):
                 exception is not None):
             self.error_handler(exception)
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *_):
+        """Finalises the image loader."""
+        pass
+
 
 class SynchronousImageLoader(ImageLoader):
     """Implementation of ImageLoader
@@ -408,6 +415,10 @@ class ThreadImageLoader(AsynchronousImageLoader):
             max_workers=threads_low_priority)
         self.threads = threads + threads_low_priority
 
+    def __exit__(self, *_):
+        self.__executor_low_priority.shutdown()
+        self.__executor.shutdown()
+
     def _schedule(self, function, priority):
         executor = self.__executor
         if priority == self.Priority.LOW:
@@ -436,6 +447,10 @@ class ProcessImageLoader(ThreadImageLoader):
         self.__executor_loader \
             .submit(id, id) \
             .result()
+
+    def __exit__(self, *args):
+        super().__exit__(*args)
+        self.__executor_loader.shutdown()
 
     @staticmethod
     def _load_image_extern(path, upper_bound_size, post_load_processor):
