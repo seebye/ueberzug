@@ -198,20 +198,25 @@ class UeberzugProcess:
         SIGKILL will also be send.
         """
         if self.running:
-            ueberzug_pgid = os.getpgid(self.__process.pid)
-            own_pgid = os.getpgid(0)
-            assert ueberzug_pgid != own_pgid
-            timer_kill = threading.Timer(
-                self.__KILL_TIMEOUT_SECONDS,
-                os.killpg,
-                [ueberzug_pgid, signal.SIGKILL])
+            timer_kill = None
 
             try:
+                ueberzug_pgid = os.getpgid(self.__process.pid)
+                own_pgid = os.getpgid(0)
+                assert ueberzug_pgid != own_pgid
+                timer_kill = threading.Timer(
+                    self.__KILL_TIMEOUT_SECONDS,
+                    os.killpg,
+                    [ueberzug_pgid, signal.SIGKILL])
+
                 self.__process.terminate()
                 timer_kill.start()
                 self.__process.communicate()
+            except ProcessLookupError:
+                pass
             finally:
-                timer_kill.cancel()
+                if timer_kill is not None:
+                    timer_kill.cancel()
 
 
 class CommandTransmitter:
