@@ -2,11 +2,13 @@
 """Usage:
     ueberzug layer [options]
     ueberzug library
+    ueberzug version
     ueberzug query_windows PIDS ...
 
 Routines:
     layer                   Display images
     library                 Prints the path to the bash library
+    version                 Prints the project version
     query_windows           Orders ueberzug to search for windows.
                             Only for internal use.
 
@@ -46,6 +48,9 @@ def main():
     elif options['query_windows']:
         import ueberzug.query_windows as query_windows
         module = query_windows
+    elif options['version']:
+        import ueberzug.version as version
+        module = version
 
     module.main(options)
 
