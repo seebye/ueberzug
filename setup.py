@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import distutils.core
 import setuptools
+
+import ueberzug
 # To use a consistent encoding
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
@@ -19,7 +21,7 @@ setuptools.setup(
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
     name='ueberzug',  # Required
-    license='GPLv3',
+    license=ueberzug.__license__,
 
     include_package_data=True,
     package_data={
@@ -41,22 +43,22 @@ setuptools.setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='18.1.6',  # Required
+    version=ueberzug.__version__,  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description='ueberzug is a command line util which allows to display images in combination with X11',  # Required
+    description=ueberzug.__description__,  # Required
 
     # This should be a valid link to your project's main homepage.
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url='https://github.com/seebye/ueberzug',  # Optional
+    url=ueberzug.__url_project__,  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
-    author='Nico Baeurer',  # Optional
+    author=ueberzug.__author__,  # Optional
 
     # Classifiers help users find your project by categorizing it.
     #
@@ -108,7 +110,7 @@ setuptools.setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://github.com/seebye/ueberzug/issues',
-        'Source': 'https://github.com/seebye/ueberzug',
+        'Bug Reports': ueberzug.__url_bug_reports__,
+        'Source': ueberzug.__url_repository__,
     },
 )
