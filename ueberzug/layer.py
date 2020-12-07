@@ -86,8 +86,15 @@ async def reset_terminal_info(windows):
 
 
 async def shutdown(loop):
-    tasks = [task for task in asyncio.Task.all_tasks()
-             if task is not asyncio.tasks.Task.current_task()]
+    try:
+        all_tasks = asyncio.all_tasks()
+        current_task = asyncio.current_task()
+    except AttributeError:
+        all_tasks = asyncio.Task.all_tasks()
+        current_task = asyncio.tasks.Task.current_task()
+
+    tasks = [task for task in all_tasks
+             if task is not current_task]
     list(map(lambda task: task.cancel(), tasks))
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
