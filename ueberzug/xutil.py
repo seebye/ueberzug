@@ -1,15 +1,13 @@
 """This module contains x11 utils"""
-import os
-import sys
 import functools
 import asyncio
 
 import Xlib
 import Xlib.display as Xdisplay
-import psutil
 
 import ueberzug.tmux_util as tmux_util
 import ueberzug.terminal as terminal
+import ueberzug.process as process
 
 
 Xdisplay.Display.__enter__ = lambda self: self
@@ -64,17 +62,16 @@ def get_display():
 
 
 @functools.lru_cache()
-def get_parent_pids(pid=None):
+def get_parent_pids(pid):
     """Determines all parent pids of this process.
     The list is sorted from youngest parent to oldest parent.
     """
     pids = []
-    process = psutil.Process(pid=pid)
+    next_pid = pid
 
-    while (process is not None and
-           process.pid > 1):
-        pids.append(process.pid)
-        process = process.parent()
+    while next_pid > 1:
+        pids.append(next_pid)
+        next_pid = process.get_parent_pid(next_pid)
 
     return pids
 
@@ -147,10 +144,9 @@ def get_first_pty(pids: list):
     the first process in the passed list which owns one.
     """
     for pid in pids:
-        pty_candidate = '/proc/{pid}/fd/1'.format(pid=pid)
-        with open(pty_candidate) as pty:
-            if os.isatty(pty.fileno()):
-                return pty_candidate
+        pty_slave_file = process.get_pty_slave(pid)
+        if pty_slave_file:
+            return pty_slave_file
 
     return None
 
@@ -169,7 +165,7 @@ def get_parent_window_infos():
     if tmux_util.is_used():
         client_pids = tmux_util.get_client_pids()
     else:
-        client_pids = {psutil.Process().pid}
+        client_pids = {process.get_own_pid()}
 
     if client_pids:
         pid_window_id_map = get_pid_window_id_map()
