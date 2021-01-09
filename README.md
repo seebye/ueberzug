@@ -58,9 +58,14 @@ Commands are separated with a line break.
 ### Command formats
 
 - json: Command as json object
-- simple: Key-value pairs seperated by a tab,  
-          pairs are also seperated by a tab  
-- bash: dump of an associative array (`declare -p variable_name`)
+- simple:  
+  Key-value pairs seperated by a tab,  
+  pairs are also seperated by a tab  
+  **:warning: ONLY FOR TESTING!**  
+  Simple was never intended for the usage in production!  
+  It doesn't support paths containing tabs or line breaks  
+  which makes it error prone.
+- bash: dump of an associative array (`declare -p variable_name`)  
 
 ### Actions
 
