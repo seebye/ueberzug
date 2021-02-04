@@ -23,6 +23,8 @@ Layer options:
                            thread: load images in threads
                            process: load images in additional processes
                            [default: thread]
+    --window-id <id>       set the window id that the layer will displays on,
+                           to disambiguate pid that contains multiple windows
     -s, --silent           print stderr to /dev/null
 
 

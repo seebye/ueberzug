@@ -200,10 +200,15 @@ def main(options):
             os.dup2(outfile, sys.stderr.fileno())
         finally:
             os.close(outfile)
+    if options['--window-id']:
+        try:
+            options['--window-id'] = int(options['--window-id'])
+        except ValueError:
+            raise ValueError("Optional argunment --window-id should be an integer, but was '%s'." % options['--window-id'])
 
     display = xutil.get_display()
     screen = display.screen()
-    window_infos = xutil.get_parent_window_infos()
+    window_infos = xutil.get_parent_window_infos(options['--window-id'])
     loop = asyncio.get_event_loop()
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
     parser_object = (parser.ParserOption(options['--parser'])

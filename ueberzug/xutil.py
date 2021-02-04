@@ -88,7 +88,7 @@ def get_pid_window_id_map():
     """Determines the pid of each mapped window.
 
     Returns:
-        dict of {pid: window_id}
+        dict of {pid: [window_id,...]}
     """
     with get_display() as display:
         root = display.screen().root
@@ -97,13 +97,14 @@ def get_pid_window_id_map():
                 display.intern_atom('_NET_CLIENT_LIST'),
                 Xlib.X.AnyPropertyType)
              .value)
-        return {**{
-            get_pid_by_window_id(display, window.id): window.id
-            for window in root.query_tree().children
-        }, **{
-            get_pid_by_window_id(display, window_id): window_id
-            for window_id in visible_window_ids
-        }}
+        mappings = {}
+        for window_id in visible_window_ids:
+            pid_to_wid = mappings.setdefault(get_pid_by_window_id(display, window_id), [])
+            pid_to_wid.append(window_id)
+        for window in root.query_tree().children:
+            pid_to_wid = mappings.setdefault(get_pid_by_window_id(display, window_id), [])
+            pid_to_wid.append(window.id)
+        return mappings
 
 
 def sort_by_key_list(mapping: dict, key_list: list):
@@ -151,7 +152,7 @@ def get_first_pty(pids: list):
     return None
 
 
-def get_parent_window_infos():
+def get_parent_window_infos(window_id_override=None):
     """Determines the window id of each
     terminal which displays the program using
     this layer.
@@ -174,8 +175,15 @@ def get_parent_window_infos():
             ppids = get_parent_pids(pid)
             ppid_window_id_map = key_intersection(pid_window_id_map, ppids)
             try:
-                window_pid, window_id = next(iter(sort_by_key_list(
+                window_pid, window_ids = next(iter(sort_by_key_list(
                     ppid_window_id_map, ppids)))
+                if window_id_override:
+                    if window_id_override not in window_ids:
+                        raise ValueError("Given window id '%s' does not belongs to current pid '%s'." 
+                            % (window_id_override, window_pid))
+                    window_id = window_id_override
+                else:
+                    window_id = window_ids[0]
                 window_children_pids = ppids[:ppids.index(window_pid)][::-1]
                 pty = get_first_pty(window_children_pids)
                 window_infos.append(TerminalWindowInfo(window_id, pty))
