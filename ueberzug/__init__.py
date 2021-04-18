@@ -4,4 +4,4 @@ __description__ ='ueberzug is a command line util which allows to display images
 __url_repository__ = 'https://github.com/seebye/ueberzug'
 __url_bug_reports__ = 'https://github.com/seebye/ueberzug/issues'
 __url_project__ = __url_repository__
-__author__ = 'Nico Baeurer'
+__author__ = 'Nico Bäurer'
