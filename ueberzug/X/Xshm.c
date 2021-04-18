@@ -1,58 +1,38 @@
-#define PY_SSIZE_T_CLEAN  // Make "s#" use Py_ssize_t rather than int.
-#include <Python.h>
+#include "python.h"
+
 #include <stdbool.h>
 #include <sys/shm.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/XShm.h>
 
+#include "math.h"
+#include "util.h"
+#include "display.h"
+
 #define INVALID_SHM_ID -1
 #define INVALID_SHM_ADDRESS (char*)-1
 #define BYTES_PER_PIXEL 4
 
-#define min(a,b) (((a) < (b)) ? (a) : (b))
-#define max(a,b) (((a) > (b)) ? (a) : (b))
-
-#define Py_INIT_ERROR -1
-#define Py_INIT_SUCCESS 0
-
-#define __raise(return_value, Exception, message...) { \
-    char errorMessage[500]; \
-    snprintf(errorMessage, 500, message); \
-    PyErr_SetString( \
-        PyExc_##Exception, \
-        errorMessage); \
-    return return_value; \
-}
-#define raise(Exception, message...) __raise(NULL, Exception, message)
-#define raiseInit(Exception, message...) __raise(Py_INIT_ERROR, Exception, message)
-
-
-static Display* display = NULL;
 
 typedef struct {
     PyObject_HEAD
     int width;
     int height;
     int buffer_size;
+    DisplayObject *display_pyobject;
     XShmSegmentInfo segmentInfo;
     XImage *image;
-} Image;
+} ImageObject;
 
-static bool
-init_display() {
-    if (display == NULL) {
-        display = XOpenDisplay(NULL);
-        if (display == NULL) {
-            return false;
-        }
-    }
 
-    return true;
+static inline Display *
+get_display(ImageObject *self) {
+    return self->display_pyobject->event_display;
 }
 
 static bool
-Image_init_shared_memory(Image *self) {
+Image_init_shared_memory(ImageObject *self) {
     self->segmentInfo.shmid = shmget(
         IPC_PRIVATE,
         self->buffer_size,
@@ -61,7 +41,7 @@ Image_init_shared_memory(Image *self) {
 }
 
 static bool
-Image_map_shared_memory(Image *self) {
+Image_map_shared_memory(ImageObject *self) {
     // Map the shared memory segment into the address space of this process
     self->segmentInfo.shmaddr = (char*)shmat(self->segmentInfo.shmid, 0, 0);
 
@@ -77,7 +57,8 @@ Image_map_shared_memory(Image *self) {
 }
 
 static bool
-Image_create_shared_image(Image *self) {
+Image_create_shared_image(ImageObject *self) {
+    Display *display = get_display(self);
     int screen = XDefaultScreen(display);
     // Allocate the memory needed for the XImage structure
     self->image = XShmCreateImage(
@@ -92,44 +73,56 @@ Image_create_shared_image(Image *self) {
 
         // Ask the X server to attach the shared memory segment and sync
         XShmAttach(display, &self->segmentInfo);
-        XSync(display, false);
+        XFlush(display);
         return true;
     }
     return false;
 }
 
 static void
-Image_destroy_shared_image(Image *self) {
+Image_destroy_shared_image(ImageObject *self) {
     if (self->image) {
-        XShmDetach(display, &self->segmentInfo);
+        XShmDetach(get_display(self), &self->segmentInfo);
         XDestroyImage(self->image);
         self->image = NULL;
     }
 }
 
 static void
-Image_free_shared_memory(Image *self) {
+Image_free_shared_memory(ImageObject *self) {
     if(self->segmentInfo.shmaddr != INVALID_SHM_ADDRESS) {
         shmdt(self->segmentInfo.shmaddr);
         self->segmentInfo.shmaddr = INVALID_SHM_ADDRESS;
     }
 }
 
+static void
+Image_finalise(ImageObject *self) {
+    Image_destroy_shared_image(self);
+    Image_free_shared_memory(self);
+    Py_CLEAR(self->display_pyobject);
+}
+
 static int
-Image_init(Image *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"width", "height", NULL};
+Image_init(ImageObject *self, PyObject *args, PyObject *kwds) {
+    static char *kwlist[] = {"display", "width", "height", NULL};
+    PyObject *display_pyobject;
+
     if (!PyArg_ParseTupleAndKeywords(
-            args, kwds, "ii", kwlist,
+            args, kwds, "O!ii", kwlist,
+            &DisplayType, &display_pyobject,
             &self->width, &self->height)) {
-        return Py_INIT_ERROR;
+        Py_INIT_RETURN_ERROR;
     }
 
+    if (self->display_pyobject) {
+        Image_finalise(self);
+    }
+
+    Py_INCREF(display_pyobject);
+    self->display_pyobject = (DisplayObject*)display_pyobject;
     self->buffer_size = self->width * self->height * BYTES_PER_PIXEL;
 
-    if (!init_display()) {
-        raiseInit(OSError, "could not open a connection to the X server");
-    }
-    
     if (!Image_init_shared_memory(self)) {
         raiseInit(OSError, "could not init shared memory");
     }
@@ -143,43 +136,42 @@ Image_init(Image *self, PyObject *args, PyObject *kwds) {
         raiseInit(OSError, "could not allocate the XImage structure");
     }
     
-    return Py_INIT_SUCCESS;
+    Py_INIT_RETURN_SUCCESS;
 }
 
 static void
-Image_dealloc(Image *self) {
-    Image_destroy_shared_image(self);
-    Image_free_shared_memory(self);
+Image_dealloc(ImageObject *self) {
+    Image_finalise(self);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject *
-Image_copyTo(Image *self, PyObject *args, PyObject *kwds) {
+Image_copy_to(ImageObject *self, PyObject *args, PyObject *kwds) {
     // draws the image on the surface at x, y
     static char *kwlist[] = {"drawable", "x", "y", "width", "height", NULL};
     Drawable surface;
     GC gc;
     int x, y;
-    int width, height;
+    unsigned int width, height;
+    Display *display = get_display(self);
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, kwds, "liiii", kwlist,
+            args, kwds, "kiiII", kwlist,
             &surface, &x, &y, &width, &height)) {
-        return NULL;
+        Py_RETURN_ERROR;
     }
 
     gc = XCreateGC(display, surface, 0, NULL);
     XShmPutImage(display, surface, gc,
                  self->image, 0, 0,
-                 x, y, width, height, False);
+                 x, y, width, height, false);
     XFreeGC(display, gc);
-    XSync(display, false);
 
     Py_RETURN_NONE;
 }
 
 static PyObject *
-Image_draw(Image *self, PyObject *args, PyObject *kwds) {
+Image_draw(ImageObject *self, PyObject *args, PyObject *kwds) {
     // puts the pixels on the image at x, y
     static char *kwlist[] = {"x", "y", "width", "height", "pixels", NULL};
     int offset_x, offset_y;
@@ -195,9 +187,10 @@ Image_draw(Image *self, PyObject *args, PyObject *kwds) {
             args, kwds, "iiiis#", kwlist,
             &offset_x, &offset_y, &width, &height,
             &pixels, &pixels_size)) {
-        return NULL;
+        Py_RETURN_ERROR;
     }
 
+    Py_BEGIN_ALLOW_THREADS
     destination_offset_x_bytes = max(0, offset_x) * BYTES_PER_PIXEL;
     source_pixels_per_row = width * BYTES_PER_PIXEL;
     destination_pixels_per_row = self->width * BYTES_PER_PIXEL;
@@ -252,12 +245,13 @@ Image_draw(Image *self, PyObject *args, PyObject *kwds) {
             memcpy(destination, source, pixels_per_row);
         }
     }
+    Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }
 
 static PyMethodDef Image_methods[] = {
-    {"copy_to", (PyCFunction)Image_copyTo,
+    {"copy_to", (PyCFunction)Image_copy_to,
      METH_VARARGS | METH_KEYWORDS,
      "Draws the image on the surface at the passed coordinate.\n"
      "\n"
@@ -282,16 +276,17 @@ static PyMethodDef Image_methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject ImageType = {
+PyTypeObject ImageType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "Xshm.Image",
+    .tp_name = "ueberzug.X.Image",
     .tp_doc = 
         "An shared memory X11 Image\n"
         "\n"
         "Args:\n"
+        "    display (ueberzug.X.Display): the X11 display\n"
         "    width (int): the width of this image\n"
         "    height (int): the height of this image",
-    .tp_basicsize = sizeof(Image),
+    .tp_basicsize = sizeof(ImageObject),
     .tp_itemsize = 0,
     .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_new = PyType_GenericNew,
@@ -299,25 +294,3 @@ static PyTypeObject ImageType = {
     .tp_dealloc = (destructor) Image_dealloc,
     .tp_methods = Image_methods,
 };
-
-static PyModuleDef module = {
-    PyModuleDef_HEAD_INIT,
-    .m_name = "Xshm",
-    .m_doc = "Modul which implements the interaction with the Xshm extension.",
-    .m_size = -1,
-};
-
-PyMODINIT_FUNC
-PyInit_Xshm(void) {
-    PyObject *module_instance;
-    if (PyType_Ready(&ImageType) < 0)
-        return NULL;
-
-    module_instance = PyModule_Create(&module);
-    if (module_instance == NULL)
-        return NULL;
-
-    Py_INCREF(&ImageType);
-    PyModule_AddObject(module_instance, "Image", (PyObject*)&ImageType);
-    return module_instance;
-}

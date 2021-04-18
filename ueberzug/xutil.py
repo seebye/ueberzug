@@ -2,16 +2,11 @@
 import functools
 import asyncio
 
-import Xlib
-import Xlib.display as Xdisplay
-
 import ueberzug.tmux_util as tmux_util
 import ueberzug.terminal as terminal
 import ueberzug.process as process
+import ueberzug.X as X
 
-
-Xdisplay.Display.__enter__ = lambda self: self
-Xdisplay.Display.__exit__ = lambda self, *args: self.close()
 
 PREPARED_DISPLAYS = []
 DISPLAY_SUPPLIES = 1
@@ -20,45 +15,26 @@ DISPLAY_SUPPLIES = 1
 class Events:
     """Async iterator class for x11 events"""
 
-    def __init__(self, loop, display: Xdisplay.Display):
+    def __init__(self, loop, display: X.Display):
         self._loop = loop
         self._display = display
 
     @staticmethod
-    async def receive_event(loop, display):
+    async def wait_for_event(loop, display: X.Display):
         """Waits asynchronously for an x11 event and returns it"""
-        return await loop.run_in_executor(None, display.next_event)
+        return await loop.run_in_executor(None, display.wait_for_event)
 
     def __aiter__(self):
         return self
 
     async def __anext__(self):
-        return await Events.receive_event(self._loop, self._display)
+        return await Events.wait_for_event(self._loop, self._display)
 
 
 class TerminalWindowInfo(terminal.TerminalInfo):
     def __init__(self, window_id, fd_pty=None):
         super().__init__(fd_pty)
         self.window_id = window_id
-
-
-async def prepare_display():
-    """Fills up the display supplies."""
-    if len(PREPARED_DISPLAYS) < DISPLAY_SUPPLIES:
-        PREPARED_DISPLAYS.append(Xdisplay.Display())
-
-
-def get_display():
-    """Unfortunately, Xlib tends to produce death locks
-    on requests with an expected reply.
-    (e.g. Drawable#get_geometry)
-    Use for each request a new display as workaround.
-    """
-    for _ in range(len(PREPARED_DISPLAYS), DISPLAY_SUPPLIES):
-        asyncio.ensure_future(prepare_display())
-    if not PREPARED_DISPLAYS:
-        return Xdisplay.Display()
-    return PREPARED_DISPLAYS.pop()
 
 
 @functools.lru_cache()
@@ -76,34 +52,15 @@ def get_parent_pids(pid):
     return pids
 
 
-def get_pid_by_window_id(display: Xdisplay.Display, window_id: int):
-    window = display.create_resource_object('window', window_id)
-    prop = window.get_full_property(display.intern_atom('_NET_WM_PID'),
-                                    Xlib.X.AnyPropertyType)
-    return (prop.value[0] if prop
-            else None)
-
-
-def get_pid_window_id_map():
+def get_pid_window_id_map(display: X.Display):
     """Determines the pid of each mapped window.
 
     Returns:
         dict of {pid: window_id}
     """
-    with get_display() as display:
-        root = display.screen().root
-        visible_window_ids = \
-            (root.get_full_property(
-                display.intern_atom('_NET_CLIENT_LIST'),
-                Xlib.X.AnyPropertyType)
-             .value)
-        return {**{
-            get_pid_by_window_id(display, window.id): window.id
-            for window in root.query_tree().children
-        }, **{
-            get_pid_by_window_id(display, window_id): window_id
-            for window_id in visible_window_ids
-        }}
+    return {
+        display.get_window_pid(window_id): window_id
+        for window_id in display.get_child_window_ids()}
 
 
 def sort_by_key_list(mapping: dict, key_list: list):
@@ -151,7 +108,7 @@ def get_first_pty(pids: list):
     return None
 
 
-def get_parent_window_infos():
+def get_parent_window_infos(display: X.Display):
     """Determines the window id of each
     terminal which displays the program using
     this layer.
@@ -168,7 +125,7 @@ def get_parent_window_infos():
         client_pids = {process.get_own_pid()}
 
     if client_pids:
-        pid_window_id_map = get_pid_window_id_map()
+        pid_window_id_map = get_pid_window_id_map(display)
 
         for pid in client_pids:
             ppids = get_parent_pids(pid)

@@ -60,7 +60,7 @@ class DrawAction(Action, Drawable, metaclass=abc.ABCMeta):
         which does the same.
 
         Args:
-            windows (batch.BatchList of ui.OverlayWindow):
+            windows (batch.BatchList of ui.CanvasWindow):
                 the windows to be redrawn
 
         Returns:
@@ -148,7 +148,7 @@ class AddImageAction(ImageAction):
         after applying the changes of this command.
 
         Args:
-            old_placement (ui.OverlayWindow.Placement):
+            old_placement (ui.CanvasWindow.Placement):
                 the old data of the placement
 
         Returns:
@@ -164,7 +164,7 @@ class AddImageAction(ImageAction):
         the image of the placement to properly render the placement.
 
         Args:
-            old_placement (ui.OverlayWindow.Placement):
+            old_placement (ui.CanvasWindow.Placement):
                 the old data of the placement
             screen_columns (float):
                 the maximum amount of columns the screen can display
@@ -186,7 +186,7 @@ class AddImageAction(ImageAction):
         the image of the placement to render the placement more quickly.
 
         Args:
-            old_placement (ui.OverlayWindow.Placement):
+            old_placement (ui.CanvasWindow.Placement):
                 the old data of the placement
             screen_columns (float):
                 the maximum amount of columns the screen can display
@@ -256,7 +256,7 @@ class AddImageAction(ImageAction):
                     self.path, upper_bound_size, image_post_load_processor)
                 cache = None
 
-            view.media[self.identifier] = ui.OverlayWindow.Placement(
+            view.media[self.identifier] = ui.CanvasWindow.Placement(
                 self.x, self.y, self.width, self.height,
                 geometry.Point(self.scaling_position_x,
                                self.scaling_position_y),

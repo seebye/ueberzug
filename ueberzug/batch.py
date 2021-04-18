@@ -4,6 +4,7 @@ for each element of a list of objects of the same class.
 """
 import abc
 import collections.abc
+import functools
 
 
 class SubclassingMeta(abc.ABCMeta):
@@ -104,17 +105,35 @@ class BatchList(collections.abc.MutableSequence, metaclass=SubclassingMeta):
         setattr(type(self), name, decorator)
 
     def __init_attributes__(self, target_instance):
+        for name in self.__get_public_attributes(target_instance):
+            self.__declare_decorator__(name, BatchList.BatchField(self, name))
+
+    @staticmethod
+    def __get_public_attributes(target_instance):
         attributes = (vars(target_instance)
                       if hasattr(target_instance, '__dict__')
                       else [])
+        return (name for name in attributes
+                if not name.startswith('_'))
 
-        for name in filter(lambda name: not name.startswith('_'),
-                           attributes):
-            self.__declare_decorator__(name, BatchList.BatchField(self, name))
+    @staticmethod
+    @functools.lru_cache()
+    def __get_public_members(target_type):
+        members = {
+            name: member
+            for type_members in
+            map(vars, reversed(target_type.mro()))
+            for name, member in type_members.items()
+        }
+        return {
+            name: member
+            for name, member in members.items()
+            if not name.startswith('_')
+        }
 
     def __init_methods__(self, target_instance):
-        for name, value in filter(lambda i: not i[0].startswith('_'),
-                                  vars(type(target_instance)).items()):
+        public_members = self.__get_public_members(type(target_instance))
+        for name, value in public_members.items():
             if callable(value):
                 self.__declare_decorator__(
                     name, BatchList.BatchMethod(self, name))

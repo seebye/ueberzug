@@ -16,12 +16,14 @@ import ueberzug.action as action
 import ueberzug.tmux_util as tmux_util
 import ueberzug.geometry as geometry
 import ueberzug.loading as loading
+import ueberzug.X as X
 
 
 async def process_xevents(loop, display, windows):
     """Coroutine which processes X11 events"""
-    async for event in xutil.Events(loop, display):
-        windows.process_event(event)
+    async for _ in xutil.Events(loop, display):
+        if not any(windows.process_event()):
+            display.discard_event()
 
 
 async def process_commands(loop, shutdown_routine_factory,
@@ -43,18 +45,18 @@ async def process_commands(loop, shutdown_routine_factory,
         asyncio.ensure_future(shutdown_routine_factory())
 
 
-async def query_windows(window_factory, windows, view):
+async def query_windows(display: X.Display, window_factory, windows, view):
     """Signal handler for SIGUSR1.
     Searches for added and removed tmux clients.
     Added clients: additional windows will be mapped
     Removed clients: existing windows will be destroyed
     """
-    parent_window_infos = xutil.get_parent_window_infos()
+    parent_window_infos = xutil.get_parent_window_infos(display)
     view.offset = tmux_util.get_offset()
     map_parent_window_id_info = {info.window_id: info
                                  for info in parent_window_infos}
     parent_window_ids = map_parent_window_id_info.keys()
-    map_current_windows = {window.parent_window.id: window
+    map_current_windows = {window.parent_id: window
                            for window in windows}
     current_window_ids = map_current_windows.keys()
     diff_window_ids = parent_window_ids ^ current_window_ids
@@ -201,9 +203,6 @@ def main(options):
         finally:
             os.close(outfile)
 
-    display = xutil.get_display()
-    screen = display.screen()
-    window_infos = xutil.get_parent_window_infos()
     loop = asyncio.get_event_loop()
     executor = thread.DaemonThreadPoolExecutor(max_workers=2)
     parser_object = (parser.ParserOption(options['--parser'])
@@ -213,11 +212,13 @@ def main(options):
     error_handler = error_processor_factory(parser_object)
     view = View()
     tools = Tools(image_loader, parser_object, error_handler)
-    window_factory = ui.OverlayWindow.Factory(display, view)
+    display = X.Display()
+    window_factory = ui.CanvasWindow.Factory(display, view)
+    window_infos = xutil.get_parent_window_infos(display)
     windows = batch.BatchList(window_factory.create(*window_infos))
     image_loader.register_error_handler(error_handler)
-    view.screen_width = screen.width_in_pixels
-    view.screen_height = screen.height_in_pixels
+    view.screen_width = display.screen_width
+    view.screen_height = display.screen_height
 
     if tmux_util.is_used():
         atexit.register(setup_tmux_hooks())
@@ -233,7 +234,7 @@ def main(options):
         loop.add_signal_handler(
             signal.SIGUSR1,
             lambda: asyncio.ensure_future(query_windows(
-                window_factory, windows, view)))
+                display, window_factory, windows, view)))
 
         loop.add_signal_handler(
             signal.SIGWINCH,
