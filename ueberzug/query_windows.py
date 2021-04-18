@@ -48,7 +48,7 @@ def send_signal_safe(own_pid, target_pid):
     """
     pidfile = None
     try:
-        pidfile = os.pidfile_open(target_pid)
+        pidfile = os.open(f'/proc/{target_pid}', os.O_DIRECTORY)
         if is_same_command(own_pid, target_pid):
             signal.pidfd_send_signal(pidfile, signal.SIGUSR1)
     except FileNotFoundError:
