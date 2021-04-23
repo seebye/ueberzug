@@ -1,1 +1,3 @@
 include ueberzug/lib/lib.sh
+include ueberzug/X/*.h
+include ueberzug/X/*.c

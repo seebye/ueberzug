@@ -35,6 +35,7 @@ Libraries used in the c extension:
 - python
 - X11
 - Xext
+- XRes
 
 There are also other direct dependencies,  
 but they will be installed by pip.

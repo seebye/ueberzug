@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import distutils.core
 import setuptools
+import glob
 
 import ueberzug
 # To use a consistent encoding
@@ -34,7 +35,10 @@ setuptools.setup(
     },
     ext_modules=[
         distutils.core.Extension(
-            "Xshm", ["Xshm/Xshm.c"], libraries=["X11", "Xext"]),
+            "ueberzug.X",
+            glob.glob("ueberzug/X/*.c"),
+            libraries=["X11", "Xext", "XRes"],
+            include_dirs=["ueberzug/X"]),
     ],
 
     # Versions should comply with PEP 440:
@@ -96,8 +100,7 @@ setuptools.setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['python-xlib', 'pillow', 'docopt',
-                      'attrs>=18.2.0'],  # Optional
+    install_requires=['pillow', 'docopt', 'attrs>=18.2.0'],  # Optional
     python_requires='>=3.6',
 
     # List additional URLs that are relevant to your project as a dict.
