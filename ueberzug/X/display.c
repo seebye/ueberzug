@@ -225,7 +225,7 @@ static PyGetSetDef Display_properties[] = {
             "    The scanline is calculated in multiples of this value."},
     {"screen_width", (getter)Display_get_screen_width,
      .doc = "int: The width of the default screen at the time the connection to X11 was opened."},
-    {"screen_height", (getter)Display_get_screen_width,
+    {"screen_height", (getter)Display_get_screen_height,
      .doc = "int: The height of the default screen at the time the connection to X11 was opened."},
     {NULL}  /* Sentinel */
 };
