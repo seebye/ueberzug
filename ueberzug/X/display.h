@@ -24,6 +24,7 @@ typedef struct {
     Atom wm_locale_name;
     Atom wm_normal_hints;
 } DisplayObject;
-PyTypeObject DisplayType;
+
+extern PyTypeObject DisplayType;
 
 #endif

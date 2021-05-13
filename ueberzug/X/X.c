@@ -4,7 +4,7 @@
 #include "Xshm.h"
 
 
-static PyModuleDef module = {
+PyModuleDef module = {
     PyModuleDef_HEAD_INIT,
     .m_name = "ueberzug.X",
     .m_doc = "Modul which implements the interaction with the Xshm extension.",

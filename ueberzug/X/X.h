@@ -3,5 +3,5 @@
 #include "python.h"
 
 
-PyModuleDef module;
+extern PyModuleDef module;
 #endif
