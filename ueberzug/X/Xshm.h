@@ -3,5 +3,5 @@
 #include "python.h"
 
 
-PyTypeObject ImageType;
+extern PyTypeObject ImageType;
 #endif

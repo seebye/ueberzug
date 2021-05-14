@@ -3,5 +3,5 @@
 #include "python.h"
 
 
-PyTypeObject WindowType;
+extern PyTypeObject WindowType;
 #endif
