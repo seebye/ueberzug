@@ -26,6 +26,7 @@ Advantages to w3mimgdisplay:
     + [Python](#python)
     + [Python Urwid](https://github.com/seebye/urwid-ueberzogen)
   * [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
 
 
 ## Dependencies
@@ -313,3 +314,20 @@ Scripts:
 - fzf with image preview: https://github.com/seebye/ueberzug/blob/master/examples/fzfimg.sh
 - Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
 - **F**zf **M**pd **U**ser **I**nterface: https://github.com/seebye/fmui
+
+## Troubleshooting
+
+### Not working on XMONAD (fails without errors)
+
+Ueberzug polls the window manager for the _NET_CLIENT_LIST. By default, xmonad does not supply this property. To enable this, use the [XMonad.Hooks.EwmhDesktops](https://hackage.haskell.org/package/xmonad-contrib/docs/XMonad-Hooks-EwmhDesktops.html) extension found in the xmonad-contrib package:
+
+```Haskell
+...
+import XMonad.Hooks.EwmhDesktops
+
+...
+main = do
+    ...
+    xmonad $ ewmh def
+    ...
+```
