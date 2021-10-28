@@ -122,7 +122,8 @@ def setup_tmux_hooks():
         'pane-mode-changed',
         'client-detached'
     )
-    lock_directory_path = pathlib.PosixPath(tempfile.gettempdir()) / 'ueberzug'
+    lock_directory_path = pathlib.PosixPath.joinpath(pathlib.PosixPath.home(),
+            pathlib.PosixPath('.cache/ueberzug'))
     lock_file_path = lock_directory_path / tmux_util.get_session_id()
     own_pid = str(os.getpid())
     command_template = 'ueberzug query_windows '
