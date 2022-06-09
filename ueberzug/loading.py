@@ -5,6 +5,8 @@ import os
 import threading
 import concurrent.futures
 import enum
+import cv2
+import numpy as np
 
 import ueberzug.thread as thread
 import ueberzug.pattern as pattern
@@ -29,7 +31,10 @@ def load_image(path, upper_bound_size):
         OSError: for unsupported formats
     """
     import PIL.Image
-    image = PIL.Image.open(path)
+    try:
+        image = PIL.Image.open(path)
+    except:
+        image = PIL.Image.new('RGB', (50, 50))
     original_size = image.width, image.height
     downscaled = False
     mask = None
@@ -69,6 +74,9 @@ class ImageHolder:
     """
     def __init__(self, path, image=None):
         self.path = path
+        self.op = None
+        if self.path[-3:] in ['mp4','gif','mov','mpg','epg','3gp','mkv','amv']:
+            self.op = cv2.VideoCapture(path)
         self.image = image
         self.waiter = threading.Condition()
 
@@ -81,6 +89,7 @@ class ImageHolder:
         """
         with self.waiter:
             self.image = image
+            self.imager = cv2.cvtColor(np.asarray(image),cv2.COLOR_BGR2RGB)
             self.waiter.notify_all()
 
     def await_image(self):
@@ -90,11 +99,14 @@ class ImageHolder:
         Returns:
             PIL.Image: the image assigned to this holder
         """
+        if self.op is not None:
+            _,ret =self.op.read()
+            return ret
         if self.image is None:
             with self.waiter:
                 if self.image is None:
                     self.waiter.wait()
-        return self.image
+        return self.imager
 
 
 class PostLoadImageProcessor(metaclass=abc.ABCMeta):

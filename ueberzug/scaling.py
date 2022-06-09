@@ -146,9 +146,9 @@ class DistortImageScaler(ImageScaler):
 
     def scale(self, image, position: geometry.Point,
               width: int, height: int):
-        import PIL.Image
+        import cv2
         width, height = self.calculate_resolution(image, width, height)
-        return image.resize((width, height), PIL.Image.ANTIALIAS)
+        return cv2.resize(image,(width, height))
 
 
 class FitContainImageScaler(DistortImageScaler):
@@ -168,8 +168,8 @@ class FitContainImageScaler(DistortImageScaler):
         return True
 
     def calculate_resolution(self, image, width: int, height: int):
-        factor = min(width / image.width, height / image.height)
-        return int(image.width * factor), int(image.height * factor)
+        factor = min(width / image.shape[1], height / image.shape[0])
+        return int(image.shape[1] * factor), int(image.shape[0] * factor)
 
 
 class ContainImageScaler(FitContainImageScaler):
@@ -187,6 +187,8 @@ class ContainImageScaler(FitContainImageScaler):
         return True
 
     def calculate_resolution(self, image, width: int, height: int):
+        return super().calculate_resolution(
+            image, min(width, image.shape[0]), min(height, image.shape[1]))
         return super().calculate_resolution(
             image, min(width, image.width), min(height, image.height))
 
@@ -213,7 +215,7 @@ class ForcedCoverImageScaler(DistortImageScaler, OffsetImageScaler):
               width: int, height: int):
         import PIL.Image
         width, height = self.calculate_resolution(image, width, height)
-        image_width, image_height = image.width, image.height
+        image_width, image_height = image.shape[0], image.shape[1]
         if width / image_width > height / image_height:
             image_height = int(image_height * width / image_width)
             image_width = width

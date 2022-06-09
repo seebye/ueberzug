@@ -3,6 +3,7 @@
 import abc
 import weakref
 import attr
+import cv2
 
 import PIL.Image as Image
 
@@ -86,11 +87,11 @@ class CanvasWindow(X.OverlayWindow):
             if (transformed_image is None
                     or transformed_image.options != options):
                 image = self.scaler.scale(
-                    image, self.scaling_position, width, height)
-                stride = roundup(image.width * scanline_unit, scanline_pad)
+                  image, self.scaling_position, width, height)
+                stride = roundup(image.shape[0] * scanline_unit, scanline_pad)
                 transformed_image = self.TransformedImage(
-                    options, image.tobytes("raw", 'BGRX', stride, 0))
-                self.cache[term_info] = transformed_image
+                    options, cv2.cvtColor(image,cv2.COLOR_RGB2RGBA).tobytes())
+                #self.cache[term_info] = transformed_image
 
             return (*final_size, transformed_image.data)
 
@@ -112,10 +113,10 @@ class CanvasWindow(X.OverlayWindow):
             y = int((self.y + pane_offset.top) * term_info.font_height +
                     term_info.padding_vertical)
             width = int((self.width and (self.width * term_info.font_width))
-                        or image.width)
+                        or image.shape[0])
             height = \
                 int((self.height and (self.height * term_info.font_height))
-                    or image.height)
+                    or image.shape[1])
 
             return (x, y, *self.transform_image(
                 term_info, width, height, format_scanline))

@@ -19,6 +19,11 @@ import ueberzug.loading as loading
 import ueberzug.X as X
 
 
+async def process_ticker(loop, display, windows):
+    """Coroutine which processes X11 events"""
+    while True:
+        windows.draw()
+        await asyncio.sleep(0.02)
 async def process_xevents(loop, display, windows):
     """Coroutine which processes X11 events"""
     async for _ in xutil.Events(loop, display):
@@ -242,6 +247,7 @@ def main(options):
                 reset_terminal_info(windows)))
 
         asyncio.ensure_future(process_xevents(loop, display, windows))
+        asyncio.ensure_future(process_ticker(loop, display, windows))
         asyncio.ensure_future(process_commands(
             loop, shutdown_factory(loop),
             windows, view, tools))
