@@ -24,7 +24,6 @@ Advantages to w3mimgdisplay:
   * [Libraries](#libraries)
     + [~~Bash~~ (deprecated)](#bash)
     + [Python](#python)
-    + [Python Urwid](https://github.com/seebye/urwid-ueberzogen)
   * [Examples](#examples)
 
 
@@ -310,6 +309,5 @@ Python library:
 
 Scripts:
 
-- fzf with image preview: https://github.com/seebye/ueberzug/blob/master/examples/fzfimg.sh
-- Mastodon viewer: https://github.com/seebye/ueberzug/blob/master/examples/mastodon.sh
-- **F**zf **M**pd **U**ser **I**nterface: https://github.com/seebye/fmui
+- fzf with image preview: see examples/fzfimg.sh
+- Mastodon viewer: see examples/mastodon.sh
