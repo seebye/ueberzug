@@ -4,7 +4,6 @@ import functools
 
 
 MAX_PROCESS_NAME_LENGTH = 15
-MINOR_DEVICE_NUMBER_MASK = 0b1111_1111_1111_0000_0000_0000_1111_1111
 
 
 @functools.wraps(os.getpid)
@@ -103,6 +102,29 @@ def get_parent_pid(pid: int):
     return int(process_info['ppid'])
 
 
+def calculate_minor_device_number(tty_nr: int):
+    """Calculates the minor device number contained
+    in a tty_nr of a stat file of the procfs.
+
+    Args:
+        tty_nr (int):
+            a tty_nr of a stat file of the procfs
+
+    Returns:
+        int: the minor device number contained in the tty_nr
+    """
+    TTY_NR_BITS = 32
+    FIRST_BITS = 8
+    SHIFTED_BITS = 12
+    FIRST_BITS_MASK = 0xFF
+    SHIFTED_BITS_MASK = 0xFFF00000
+    minor_device_number = (
+        (tty_nr & FIRST_BITS_MASK) +
+        ((tty_nr & SHIFTED_BITS_MASK)
+         >> (TTY_NR_BITS - SHIFTED_BITS - FIRST_BITS)))
+    return minor_device_number
+
+
 def get_pty_slave(pid: int):
     """Determines control device file
     of the pty slave of the process with the given pid.
@@ -123,12 +145,15 @@ def get_pty_slave(pid: int):
     pty_slave_folders = get_pty_slave_folders()
     process_info = get_info(pid)
     tty_nr = int(process_info['tty_nr'])
-    minor_device_number = tty_nr & MINOR_DEVICE_NUMBER_MASK
+    minor_device_number = calculate_minor_device_number(tty_nr)
 
     for folder in pty_slave_folders:
         device_path = f'{folder}/{minor_device_number}'
 
-        if tty_nr == os.stat(device_path).st_rdev:
-            return device_path
+        try:
+            if tty_nr == os.stat(device_path).st_rdev:
+                return device_path
+        except FileNotFoundError:
+            pass
 
     return None

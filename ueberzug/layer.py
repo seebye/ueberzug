@@ -212,6 +212,7 @@ def main(options):
     error_handler = error_processor_factory(parser_object)
     view = View()
     tools = Tools(image_loader, parser_object, error_handler)
+    X.init_threads()
     display = X.Display()
     window_factory = ui.CanvasWindow.Factory(display, view)
     window_infos = xutil.get_parent_window_infos(display)

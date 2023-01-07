@@ -1,7 +1,28 @@
 #include "python.h"
+
+#include <X11/Xlib.h>
+
+#include "util.h"
 #include "display.h"
 #include "window.h"
 #include "Xshm.h"
+
+
+static PyObject *
+X_init_threads(PyObject *self) {
+    if (XInitThreads() == 0) {
+        raise(OSError, "Xlib concurrent threads initialization failed.");
+    }
+    Py_RETURN_NONE;
+}
+
+
+static PyMethodDef X_methods[] = {
+    {"init_threads", (PyCFunction)X_init_threads,
+     METH_NOARGS,
+     "Initializes Xlib support for concurrent threads."},
+    {NULL}  /* Sentinel */
+};
 
 
 static PyModuleDef module = {
@@ -9,6 +30,7 @@ static PyModuleDef module = {
     .m_name = "ueberzug.X",
     .m_doc = "Modul which implements the interaction with the Xshm extension.",
     .m_size = -1,
+    .m_methods = X_methods,
 };
 
 
